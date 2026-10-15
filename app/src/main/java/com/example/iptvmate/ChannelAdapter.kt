@@ -15,8 +15,10 @@ class ChannelAdapter(
 ) : RecyclerView.Adapter<ChannelAdapter.ChannelViewHolder>() {
 
     class ChannelViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val tvChannelNumber: TextView = itemView.findViewById(R.id.tvChannelNumber)
         val ivLogo: ImageView = itemView.findViewById(R.id.ivLogo)
         val tvChannelName: TextView = itemView.findViewById(R.id.tvChannelName)
+        val tvChannelGroup: TextView = itemView.findViewById(R.id.tvChannelGroup)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ChannelViewHolder {
@@ -27,7 +29,16 @@ class ChannelAdapter(
 
     override fun onBindViewHolder(holder: ChannelViewHolder, position: Int) {
         val channel = channels[position]
+        holder.tvChannelNumber.text = (position + 1).toString()
         holder.tvChannelName.text = channel.name
+
+        val group = channel.groupTitle
+        if (!group.isNullOrBlank()) {
+            holder.tvChannelGroup.text = group
+            holder.tvChannelGroup.visibility = View.VISIBLE
+        } else {
+            holder.tvChannelGroup.visibility = View.GONE
+        }
 
         val logoUrl = channel.tvgLogo
         if (!logoUrl.isNullOrBlank()) {

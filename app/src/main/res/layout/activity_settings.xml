@@ -19,7 +19,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
-        android:text="Default Playlist URL"
+        android:text="@string/default_playlist_url"
         android:textColor="#FFB0B0B0"
         android:textSize="16sp" />
 
@@ -32,7 +32,6 @@
         android:hint="@string/playlist_url_hint"
         android:inputType="textUri"
         android:maxLines="1"
-        android:singleLine="true"
         android:textColor="#FFFFFFFF"
         android:textColorHint="#80FFFFFF"
         android:textSize="16sp" />
@@ -45,7 +44,7 @@
         android:focusable="true"
         android:focusableInTouchMode="true"
         android:gravity="center"
-        android:text="Save Settings"
+        android:text="@string/save_settings"
         android:textColor="#FFFFFFFF"
         android:textSize="18sp"
         android:textStyle="bold" />

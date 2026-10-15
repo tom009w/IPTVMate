@@ -8,6 +8,8 @@
     <string name="playlist_url_hint">http://example.com/playlist.m3u</string>
     <string name="empty_playlist_message">No playlist loaded. Click \'Playlist URL\' to import an M3U playlist.</string>
     <string name="playlist_dialog_title">Enter M3U Playlist URL</string>
+    <string name="default_playlist_url">Default Playlist URL</string>
+    <string name="save_settings">Save Settings</string>
     <string name="browse_title">Videos by Your Company</string>
     <string name="related_movies">Related Videos</string>
     <string name="grid_view">Grid View</string>
