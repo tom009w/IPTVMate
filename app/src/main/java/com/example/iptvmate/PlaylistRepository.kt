@@ -254,7 +254,10 @@ class PlaylistRepository(private val context: Context) {
         val autoPlayLastChannel: Boolean = false,
         val lastWatchedStreamUrl: String? = null,
         val playlistUrl: String? = null,
-        val epgUrl: String? = null
+        val epgUrl: String? = null,
+        val xtreamServer: String? = null,
+        val xtreamUsername: String? = null,
+        val xtreamPassword: String? = null
     )
 
     fun saveAppSettings(settings: AppSettings) {

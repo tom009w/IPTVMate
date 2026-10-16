@@ -41,7 +41,11 @@
     <string name="buy_2">AT $9.99</string>
     <string name="movie">Movie</string>
 
-    <!-- Error messages -->
     <string name="error_fragment_message">An error occurred</string>
     <string name="dismiss_error">Dismiss</string>
+    <string name="xtream_section_title">Xtream Codes API</string>
+    <string name="xtream_server_hint">Server URL (e.g. http://server:8080)</string>
+    <string name="xtream_username_hint">Username</string>
+    <string name="xtream_password_hint">Password</string>
+    <string name="xtream_connect_button">Save &amp; Load Xtream Codes</string>
 </resources>

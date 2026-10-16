@@ -255,7 +255,12 @@ class PlayerActivity : AppCompatActivity() {
             )
         }
 
+        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setBufferDurationsMs(1500, 30000, 1000, 1500)
+            .build()
+
         exoPlayer = ExoPlayer.Builder(this)
+            .setLoadControl(loadControl)
             .setTrackSelector(trackSelector)
             .setMediaSourceFactory(mediaSourceFactory)
             .build()
