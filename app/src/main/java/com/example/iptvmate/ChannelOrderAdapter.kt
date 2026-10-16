@@ -4,24 +4,19 @@ import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
 class ChannelOrderAdapter(
     private val channels: MutableList<Channel>,
-    private val onMoveUp: (Int) -> Unit,
-    private val onMoveDown: (Int) -> Unit,
-    private val onFavoriteToggle: (Int, Boolean) -> Unit
+    private val onChannelClick: (Int) -> Unit
 ) : RecyclerView.Adapter<ChannelOrderAdapter.ViewHolder>() {
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvOrderNumber: TextView = itemView.findViewById(R.id.tvOrderNumber)
-        val ivFavoriteToggle: ImageView = itemView.findViewById(R.id.ivFavoriteToggle)
+        val ivFavoriteIndicator: ImageView = itemView.findViewById(R.id.ivFavoriteIndicator)
         val tvOrderChannelName: TextView = itemView.findViewById(R.id.tvOrderChannelName)
-        val btnMoveUp: Button = itemView.findViewById(R.id.btnMoveUp)
-        val btnMoveDown: Button = itemView.findViewById(R.id.btnMoveDown)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -36,32 +31,15 @@ class ChannelOrderAdapter(
         holder.tvOrderChannelName.text = channel.name
 
         if (channel.isFavorite) {
-            holder.ivFavoriteToggle.setImageResource(android.R.drawable.btn_star_big_on)
-            holder.ivFavoriteToggle.setColorFilter(Color.parseColor("#FFB300"))
+            holder.ivFavoriteIndicator.setImageResource(android.R.drawable.btn_star_big_on)
+            holder.ivFavoriteIndicator.setColorFilter(Color.parseColor("#FFB300"))
         } else {
-            holder.ivFavoriteToggle.setImageResource(android.R.drawable.btn_star_big_off)
-            holder.ivFavoriteToggle.setColorFilter(Color.parseColor("#80FFFFFF"))
+            holder.ivFavoriteIndicator.setImageResource(android.R.drawable.btn_star_big_off)
+            holder.ivFavoriteIndicator.setColorFilter(Color.parseColor("#80FFFFFF"))
         }
 
-        holder.ivFavoriteToggle.setOnClickListener {
-            val newFav = !channel.isFavorite
-            channels[position] = channel.copy(isFavorite = newFav)
-            if (newFav) {
-                holder.ivFavoriteToggle.setImageResource(android.R.drawable.btn_star_big_on)
-                holder.ivFavoriteToggle.setColorFilter(Color.parseColor("#FFB300"))
-            } else {
-                holder.ivFavoriteToggle.setImageResource(android.R.drawable.btn_star_big_off)
-                holder.ivFavoriteToggle.setColorFilter(Color.parseColor("#80FFFFFF"))
-            }
-            onFavoriteToggle(position, newFav)
-        }
-
-        holder.btnMoveUp.setOnClickListener {
-            onMoveUp(position)
-        }
-
-        holder.btnMoveDown.setOnClickListener {
-            onMoveDown(position)
+        holder.itemView.setOnClickListener {
+            onChannelClick(position)
         }
     }
 

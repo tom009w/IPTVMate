@@ -10,7 +10,6 @@ import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
@@ -23,7 +22,9 @@ import kotlinx.coroutines.launch
 
 class LiveTvActivity : AppCompatActivity() {
 
-    private val viewModel: LiveTvViewModel by viewModels()
+    private val viewModel: LiveTvViewModel by lazy {
+        androidx.lifecycle.ViewModelProvider(this)[LiveTvViewModel::class.java]
+    }
 
     private lateinit var progressBar: ProgressBar
     private lateinit var layoutLoading: View

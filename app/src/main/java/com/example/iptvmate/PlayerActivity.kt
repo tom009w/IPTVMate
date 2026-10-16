@@ -274,6 +274,7 @@ class PlayerActivity : AppCompatActivity() {
     private fun playChannel(ch: Channel) {
         val mediaItem = buildMediaItem(ch)
         exoPlayer?.apply {
+            stop()
             setMediaItem(mediaItem)
             prepare()
             playWhenReady = true
@@ -327,7 +328,7 @@ class PlayerActivity : AppCompatActivity() {
         val mediaItem = buildMediaItem(ch)
 
         val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
-            .setBufferDurationsMs(1500, 30000, 1000, 1500)
+            .setBufferDurationsMs(1000, 30000, 500, 1000)
             .build()
 
         val trackSelector = DefaultTrackSelector(this).apply {

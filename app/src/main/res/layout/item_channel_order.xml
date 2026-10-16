@@ -4,6 +4,7 @@
     android:layout_height="64dp"
     android:layout_marginBottom="6dp"
     android:background="@drawable/tv_focusable_background"
+    android:clickable="true"
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:gravity="center_vertical"
@@ -19,16 +20,13 @@
         android:textStyle="bold" />
 
     <ImageView
-        android:id="@+id/ivFavoriteToggle"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
+        android:id="@+id/ivFavoriteIndicator"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
         android:layout_marginEnd="12dp"
-        android:background="@drawable/tv_focusable_background"
-        android:clickable="true"
         android:contentDescription="@string/favorite_toggle"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:padding="6dp"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
         android:scaleType="centerInside"
         android:src="@android:drawable/btn_star_big_off" />
 
@@ -42,28 +40,5 @@
         android:textColor="#FFFFFFFF"
         android:textSize="18sp"
         android:textStyle="bold" />
-
-    <Button
-        android:id="@+id/btnMoveUp"
-        android:layout_width="80dp"
-        android:layout_height="40dp"
-        android:layout_marginEnd="8dp"
-        android:background="@drawable/tv_focusable_background"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:text="@string/move_up"
-        android:textColor="#FFFFFFFF"
-        android:textSize="14sp" />
-
-    <Button
-        android:id="@+id/btnMoveDown"
-        android:layout_width="80dp"
-        android:layout_height="40dp"
-        android:background="@drawable/tv_focusable_background"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:text="@string/move_down"
-        android:textColor="#FFFFFFFF"
-        android:textSize="14sp" />
 
 </LinearLayout>
