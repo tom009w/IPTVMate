@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layoutMainMenu"
+    android:layout_width="260dp"
+    android:layout_height="match_parent"
+    android:layout_marginEnd="16dp"
+    android:background="#FF1A1A1A"
+    android:elevation="16dp"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:visibility="gone">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:text="@string/menu_title"
+        android:textColor="#FFFFFFFF"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/menuSearch"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/tv_focusable_background"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:text="@string/search_channels"
+        android:textColor="#FFFFFFFF"
+        android:textSize="18sp" />
+
+    <Button
+        android:id="@+id/menuSettings"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/tv_focusable_background"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:text="@string/settings"
+        android:textColor="#FFFFFFFF"
+        android:textSize="18sp" />
+
+    <Button
+        android:id="@+id/menuEpg"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/tv_focusable_background"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:text="@string/epg_guide"
+        android:textColor="#FFFFFFFF"
+        android:textSize="18sp" />
+
+    <Button
+        android:id="@+id/menuExit"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@drawable/tv_focusable_background"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:text="@string/menu_exit"
+        android:textColor="#FFFFFFFF"
+        android:textSize="18sp" />
+
+</LinearLayout>

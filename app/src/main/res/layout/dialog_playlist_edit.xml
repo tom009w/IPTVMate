@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <EditText
+        android:id="@+id/etPlaylistName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:autofillHints="name"
+        android:hint="Playlist Name"
+        android:inputType="text"
+        android:maxLines="1"
+        android:textColor="#000000"
+        android:textColorHint="#888888"
+        android:textSize="16sp" />
+
+    <EditText
+        android:id="@+id/etPlaylistM3uUrl"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:autofillHints="uri"
+        android:hint="@string/playlist_url_hint"
+        android:inputType="textUri"
+        android:maxLines="1"
+        android:textColor="#000000"
+        android:textColorHint="#888888"
+        android:textSize="16sp" />
+
+    <EditText
+        android:id="@+id/etPlaylistEpgUrl"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:autofillHints="uri"
+        android:hint="@string/epg_url_hint"
+        android:inputType="textUri"
+        android:maxLines="1"
+        android:textColor="#000000"
+        android:textColorHint="#888888"
+        android:textSize="16sp" />
+
+</LinearLayout>

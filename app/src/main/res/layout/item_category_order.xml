@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
+    android:layout_marginBottom="6dp"
+    android:background="#FF1A1A1A"
+    android:focusable="false"
+    android:focusableInTouchMode="false"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="16dp">
+
+    <TextView
+        android:id="@+id/tvCategoryOrderNumber"
+        android:layout_width="48dp"
+        android:layout_height="wrap_content"
+        android:textColor="#FFB0B0B0"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvCategoryName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="#FFFFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switchCategoryVisible"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/tv_focusable_background"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:paddingHorizontal="12dp"
+        android:text="@string/category_visible"
+        android:textColor="#FFFFFFFF" />
+
+    <Button
+        android:id="@+id/btnCategoryMoveUp"
+        android:layout_width="80dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/tv_focusable_background"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:text="@string/move_up"
+        android:textColor="#FFFFFFFF"
+        android:textSize="14sp" />
+
+    <Button
+        android:id="@+id/btnCategoryMoveDown"
+        android:layout_width="80dp"
+        android:layout_height="40dp"
+        android:background="@drawable/tv_focusable_background"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:text="@string/move_down"
+        android:textColor="#FFFFFFFF"
+        android:textSize="14sp" />
+
+</LinearLayout>
