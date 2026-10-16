@@ -89,4 +89,26 @@ class M3UParserTest {
         assertEquals("widevine", channels[0].drmScheme)
         assertEquals("http://example.com/license", channels[0].licenseUrl)
     }
+
+    @Test
+    fun testNonJioDrmPlaylistParse() {
+        val m3uContent = """
+            #EXTM3U
+            #EXTINF:-1 group-title="Encrypted",Non-Jio DRM Channel
+            #KODIPROP:inputstream.adaptive.license_type=widevine
+            #KODIPROP:inputstream.adaptive.license_key=https://license.server.com/get|Authorization=Bearer secret_token&User-Agent=CustomAgent
+            http://example.com/encrypted_manifest.mpd
+        """.trimIndent()
+
+        val inputStream = ByteArrayInputStream(m3uContent.toByteArray(Charsets.UTF_8))
+        val channels = M3UParser.parse(inputStream)
+
+        assertEquals(1, channels.size)
+        assertEquals("Non-Jio DRM Channel", channels[0].name)
+        assertEquals("http://example.com/encrypted_manifest.mpd", channels[0].streamUrl)
+        assertEquals("widevine", channels[0].drmScheme)
+        assertEquals("https://license.server.com/get", channels[0].licenseUrl)
+        assertEquals("Bearer secret_token", channels[0].licenseHeaders?.get("Authorization"))
+        assertEquals("CustomAgent", channels[0].licenseHeaders?.get("User-Agent"))
+    }
 }

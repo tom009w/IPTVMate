@@ -2,11 +2,14 @@ package com.example.iptvmate
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -22,29 +25,90 @@ class LiveTvActivity : AppCompatActivity() {
 
     private val viewModel: LiveTvViewModel by viewModels()
 
-    private lateinit var btnChangePlaylist: Button
     private lateinit var progressBar: ProgressBar
+    private lateinit var layoutLoading: View
+    private lateinit var tvLoadingProgress: TextView
     private lateinit var tvEmpty: TextView
     private lateinit var tvError: TextView
     private lateinit var rvChannels: RecyclerView
+    private lateinit var rvGroups: RecyclerView
+
+    // Second-level Main Menu views
+    private lateinit var layoutMainMenu: View
+    private lateinit var menuSettings: Button
+    private lateinit var menuEpg: Button
+    private lateinit var menuExit: Button
 
     private var currentUrl: String? = null
+    private var allChannels: List<Channel> = emptyList()
+    private var currentEpgPrograms: Map<Int, Pair<EpgProgram?, EpgProgram?>> = emptyMap()
+    private var selectedGroup: String = "All Channels"
+    private var lastBackPressTime = 0L
+    private var hasPromptedForPlaylist = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_live_tv)
 
-        btnChangePlaylist = findViewById(R.id.btnChangePlaylist)
         progressBar = findViewById(R.id.progressBar)
+        layoutLoading = findViewById(R.id.layoutLoading)
+        tvLoadingProgress = findViewById(R.id.tvLoadingProgress)
         tvEmpty = findViewById(R.id.tvEmpty)
-        tvError = findViewById(R.id.tvError)
-        rvChannels = findViewById(R.id.rvChannels)
-
-        rvChannels.layoutManager = LinearLayoutManager(this)
-
-        btnChangePlaylist.setOnClickListener {
+        tvEmpty.setOnClickListener {
             showPlaylistUrlDialog(currentUrl)
         }
+        tvError = findViewById(R.id.tvError)
+        rvChannels = findViewById(R.id.rvChannels)
+        rvGroups = findViewById(R.id.rvGroups)
+
+        rvChannels.layoutManager = LinearLayoutManager(this)
+        rvChannels.setHasFixedSize(true)
+        rvChannels.setItemViewCacheSize(20)
+        rvGroups.layoutManager = LinearLayoutManager(this)
+        rvGroups.setHasFixedSize(true)
+        rvGroups.setItemViewCacheSize(20)
+
+        // Main Menu init
+        layoutMainMenu = findViewById(R.id.layoutMainMenu)
+        menuSettings = findViewById(R.id.menuSettings)
+        menuEpg = findViewById(R.id.menuEpg)
+        menuExit = findViewById(R.id.menuExit)
+
+        menuSettings.setOnClickListener {
+            layoutMainMenu.visibility = View.GONE
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+        menuEpg.setOnClickListener {
+            layoutMainMenu.visibility = View.GONE
+            startActivity(Intent(this, EpgActivity::class.java))
+        }
+        menuExit.setOnClickListener {
+            finishAffinity()
+        }
+
+        layoutMainMenu.isFocusable = true
+        layoutMainMenu.isFocusableInTouchMode = true
+
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (layoutMainMenu.visibility == View.VISIBLE) {
+                    layoutMainMenu.visibility = View.GONE
+                    rvGroups.visibility = View.VISIBLE
+                    rvGroups.requestFocus()
+                } else if (rvGroups.visibility == View.VISIBLE) {
+                    rvGroups.visibility = View.GONE
+                    rvChannels.requestFocus()
+                } else {
+                    val currentTime = System.currentTimeMillis()
+                    if (currentTime - lastBackPressTime < 2000) {
+                        finishAffinity()
+                    } else {
+                        lastBackPressTime = currentTime
+                        Toast.makeText(this@LiveTvActivity, "Press back again to exit", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        })
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -55,54 +119,124 @@ class LiveTvActivity : AppCompatActivity() {
         }
     }
 
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_DPAD_LEFT -> {
+                    if (layoutMainMenu.visibility == View.VISIBLE) {
+                        return true
+                    } else if (rvGroups.visibility == View.VISIBLE) {
+                        rvGroups.visibility = View.GONE
+                        layoutMainMenu.visibility = View.VISIBLE
+                        menuSettings.requestFocus()
+                        return true
+                    } else if (rvChannels.visibility == View.VISIBLE) {
+                        rvGroups.visibility = View.VISIBLE
+                        rvGroups.requestFocus()
+                        return true
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    if (layoutMainMenu.visibility == View.VISIBLE) {
+                        layoutMainMenu.visibility = View.GONE
+                        rvGroups.visibility = View.VISIBLE
+                        rvGroups.requestFocus()
+                        return true
+                    } else if (rvGroups.visibility == View.VISIBLE) {
+                        rvGroups.visibility = View.GONE
+                        rvChannels.requestFocus()
+                        return true
+                    }
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     private fun renderState(state: LiveTvUiState) {
         when (state) {
             is LiveTvUiState.Loading -> {
-                progressBar.visibility = android.view.View.VISIBLE
-                tvEmpty.visibility = android.view.View.GONE
-                tvError.visibility = android.view.View.GONE
-                rvChannels.visibility = android.view.View.GONE
+                layoutLoading.visibility = View.VISIBLE
+                progressBar.visibility = View.VISIBLE
+                tvLoadingProgress.text = state.message
+                tvEmpty.visibility = View.GONE
+                tvError.visibility = View.GONE
+                rvChannels.visibility = View.GONE
+                rvGroups.visibility = View.GONE
+                layoutMainMenu.visibility = View.GONE
             }
             is LiveTvUiState.Empty -> {
-                progressBar.visibility = android.view.View.GONE
-                tvEmpty.visibility = android.view.View.VISIBLE
-                tvError.visibility = android.view.View.GONE
-                rvChannels.visibility = android.view.View.GONE
+                layoutLoading.visibility = View.GONE
+                progressBar.visibility = View.GONE
+                tvEmpty.visibility = View.VISIBLE
+                tvError.visibility = View.GONE
+                rvChannels.visibility = View.GONE
+                rvGroups.visibility = View.GONE
+                layoutMainMenu.visibility = View.GONE
                 currentUrl = state.playlistUrl
+
+                if (!hasPromptedForPlaylist) {
+                    hasPromptedForPlaylist = true
+                    showPlaylistUrlDialog(state.playlistUrl)
+                }
             }
             is LiveTvUiState.Success -> {
-                progressBar.visibility = android.view.View.GONE
-                tvEmpty.visibility = android.view.View.GONE
-                tvError.visibility = android.view.View.GONE
-                rvChannels.visibility = android.view.View.VISIBLE
+                layoutLoading.visibility = View.GONE
+                progressBar.visibility = View.GONE
+                tvEmpty.visibility = View.GONE
+                tvError.visibility = View.GONE
+                rvChannels.visibility = View.VISIBLE
                 currentUrl = state.playlistUrl
-                rvChannels.adapter = ChannelAdapter(state.channels) { channel ->
-                    val intent = Intent(this, PlayerActivity::class.java).apply {
-                        putExtra(PlayerActivity.EXTRA_CHANNEL, channel)
-                    }
-                    startActivity(intent)
+                allChannels = state.channels
+                currentEpgPrograms = state.epgPrograms
+                EpgManager.epgMap = viewModel.epgMap
+
+                val repo = PlaylistRepository(applicationContext)
+                val groups = GroupExtractor.extractGroups(allChannels, repo.loadCategoryOrder())
+                rvGroups.adapter = GroupAdapter(groups) { group ->
+                    selectedGroup = group
+                    rvGroups.visibility = View.GONE
+                    rvChannels.requestFocus()
+                    updateChannelList()
                 }
+
+                updateChannelList()
             }
             is LiveTvUiState.Error -> {
-                progressBar.visibility = android.view.View.GONE
+                progressBar.visibility = View.GONE
                 currentUrl = state.playlistUrl
                 tvError.text = state.message
-                tvError.visibility = android.view.View.VISIBLE
+                tvError.visibility = View.VISIBLE
 
-                if (state.cachedChannels != null && state.cachedChannels.isNotEmpty()) {
-                    tvEmpty.visibility = android.view.View.GONE
-                    rvChannels.visibility = android.view.View.VISIBLE
-                    rvChannels.adapter = ChannelAdapter(state.cachedChannels) { channel ->
-                        val intent = Intent(this, PlayerActivity::class.java).apply {
-                            putExtra(PlayerActivity.EXTRA_CHANNEL, channel)
-                        }
-                        startActivity(intent)
+                val channelsToShow = state.cachedChannels
+                if (!channelsToShow.isNullOrEmpty()) {
+                    tvEmpty.visibility = View.GONE
+                    rvChannels.visibility = View.VISIBLE
+                    allChannels = channelsToShow
+                    val repo = PlaylistRepository(applicationContext)
+                val groups = GroupExtractor.extractGroups(allChannels, repo.loadCategoryOrder())
+                    rvGroups.adapter = GroupAdapter(groups) { group ->
+                        selectedGroup = group
+                        rvGroups.visibility = View.GONE
+                        rvChannels.requestFocus()
+                        updateChannelList()
                     }
+                    updateChannelList()
                 } else {
-                    tvEmpty.visibility = android.view.View.VISIBLE
-                    rvChannels.visibility = android.view.View.GONE
+                    tvEmpty.visibility = View.VISIBLE
+                    rvChannels.visibility = View.GONE
                 }
             }
+        }
+    }
+
+    private fun updateChannelList() {
+        val filtered = GroupExtractor.filterChannels(allChannels, selectedGroup)
+        rvChannels.adapter = ChannelAdapter(filtered, currentEpgPrograms) { channel ->
+            val intent = Intent(this, PlayerActivity::class.java).apply {
+                putExtra(PlayerActivity.EXTRA_CHANNEL, channel)
+            }
+            startActivity(intent)
         }
     }
 
@@ -114,7 +248,7 @@ class LiveTvActivity : AppCompatActivity() {
             etUrl.setSelection(existingUrl.length)
         }
 
-        AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this)
             .setTitle(getString(R.string.playlist_dialog_title))
             .setView(dialogView)
             .setPositiveButton("Load") { _, _ ->
@@ -122,6 +256,13 @@ class LiveTvActivity : AppCompatActivity() {
                 viewModel.loadPlaylist(url)
             }
             .setNegativeButton("Cancel", null)
-            .show()
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.window?.decorView?.setBackgroundColor(android.graphics.Color.parseColor("#1E1E2E"))
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(android.graphics.Color.parseColor("#00E5FF"))
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(android.graphics.Color.parseColor("#B0BEC5"))
+        }
+        dialog.show()
     }
 }

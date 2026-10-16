@@ -7,48 +7,48 @@
     android:orientation="vertical"
     android:padding="32dp">
 
-    <LinearLayout
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="24dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/live_tv"
-            android:textColor="#FFFFFFFF"
-            android:textSize="28sp"
-            android:textStyle="bold" />
-
-        <Button
-            android:id="@+id/btnChangePlaylist"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/tv_focusable_background"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:paddingHorizontal="20dp"
-            android:paddingVertical="10dp"
-            android:text="@string/playlist_url_button"
-            android:textColor="#FFFFFFFF"
-            android:textSize="16sp" />
-
-    </LinearLayout>
+        android:text="@string/live_tv"
+        android:textColor="#FFFFFFFF"
+        android:textSize="28sp"
+        android:textStyle="bold" />
 
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <ProgressBar
-            android:id="@+id/progressBar"
+        <LinearLayout
+            android:id="@+id/layoutLoading"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:visibility="gone" />
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/progressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="260dp"
+                android:layout_height="6dp"
+                android:layout_marginBottom="12dp"
+                android:indeterminate="true"
+                android:progressTint="#00E5FF" />
+
+            <TextView
+                android:id="@+id/tvLoadingProgress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="@string/loading_channels"
+                android:textColor="#00E5FF"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/tvEmpty"
@@ -77,14 +77,39 @@
                 android:textSize="14sp"
                 android:visibility="gone" />
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvChannels"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:clipToPadding="false"
-                android:descendantFocusability="afterDescendants"
-                android:paddingBottom="24dp"
-                tools:listitem="@layout/item_channel" />
+                android:orientation="horizontal">
+
+                <!-- Second-level Main Menu Sidebar -->
+                <include layout="@layout/layout_main_menu" />
+
+                <!-- Category Sidebar -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvGroups"
+                    android:layout_width="260dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginEnd="16dp"
+                    android:background="#FF1A1A1A"
+                    android:clipToPadding="false"
+                    android:descendantFocusability="afterDescendants"
+                    android:padding="8dp"
+                    android:visibility="gone"
+                    tools:listitem="@layout/item_group" />
+
+                <!-- Channel List -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvChannels"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:clipToPadding="false"
+                    android:descendantFocusability="afterDescendants"
+                    android:paddingBottom="24dp"
+                    tools:listitem="@layout/item_channel" />
+
+            </LinearLayout>
 
         </LinearLayout>
 

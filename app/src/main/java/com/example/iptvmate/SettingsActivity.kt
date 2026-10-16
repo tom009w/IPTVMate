@@ -1,5 +1,6 @@
 package com.example.iptvmate
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
@@ -12,6 +13,10 @@ import kotlinx.coroutines.launch
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var etSettingsPlaylistUrl: EditText
+    private lateinit var etSettingsEpgUrl: EditText
+    private lateinit var btnManagePlaylists: Button
+    private lateinit var btnRearrangeChannels: Button
+    private lateinit var btnRearrangeCategories: Button
     private lateinit var btnSaveSettings: Button
     private lateinit var repository: PlaylistRepository
 
@@ -20,6 +25,10 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_settings)
 
         etSettingsPlaylistUrl = findViewById(R.id.etSettingsPlaylistUrl)
+        etSettingsEpgUrl = findViewById(R.id.etSettingsEpgUrl)
+        btnManagePlaylists = findViewById(R.id.btnManagePlaylists)
+        btnRearrangeChannels = findViewById(R.id.btnRearrangeChannels)
+        btnRearrangeCategories = findViewById(R.id.btnRearrangeCategories)
         btnSaveSettings = findViewById(R.id.btnSaveSettings)
         repository = PlaylistRepository(applicationContext)
 
@@ -29,12 +38,30 @@ class SettingsActivity : AppCompatActivity() {
                 etSettingsPlaylistUrl.setText(currentUrl)
                 etSettingsPlaylistUrl.setSelection(currentUrl.length)
             }
+            val currentEpgUrl = repository.epgUrlFlow.first()
+            if (!currentEpgUrl.isNullOrBlank()) {
+                etSettingsEpgUrl.setText(currentEpgUrl)
+            }
+        }
+
+        btnManagePlaylists.setOnClickListener {
+            startActivity(Intent(this, PlaylistsActivity::class.java))
+        }
+
+        btnRearrangeChannels.setOnClickListener {
+            startActivity(Intent(this, ChannelOrderActivity::class.java))
+        }
+
+        btnRearrangeCategories.setOnClickListener {
+            startActivity(Intent(this, CategoryOrderActivity::class.java))
         }
 
         btnSaveSettings.setOnClickListener {
             val url = etSettingsPlaylistUrl.text.toString().trim()
+            val epgUrl = etSettingsEpgUrl.text.toString().trim()
             lifecycleScope.launch {
                 repository.savePlaylistUrl(url)
+                repository.saveEpgUrl(epgUrl)
                 Toast.makeText(this@SettingsActivity, "Settings saved", Toast.LENGTH_SHORT).show()
                 finish()
             }

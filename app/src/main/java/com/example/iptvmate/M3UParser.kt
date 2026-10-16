@@ -7,7 +7,7 @@ import java.net.URL
 
 object M3UParser {
 
-    fun parse(inputStream: InputStream, playlistUrl: String? = null): List<Channel> {
+    fun parse(inputStream: InputStream, playlistUrl: String? = null, onChannelParsed: ((Int) -> Unit)? = null): List<Channel> {
         val channels = mutableListOf<Channel>()
         val reader = BufferedReader(InputStreamReader(inputStream))
         var orderIndex = 0
@@ -17,6 +17,7 @@ object M3UParser {
         var currentGroupTitle: String? = null
         var currentDrmScheme: String? = null
         var currentLicenseUrl: String? = null
+        var currentLicenseHeaders: MutableMap<String, String>? = null
         var currentName: String = "Unknown Channel"
 
         reader.useLines { lines ->
@@ -31,8 +32,15 @@ object M3UParser {
                     currentTvgName = extractAttribute(trimmed, "tvg-name")
                     currentTvgLogo = extractAttribute(trimmed, "tvg-logo")
                     currentGroupTitle = extractAttribute(trimmed, "group-title")
-                    currentDrmScheme = extractAttribute(trimmed, "drm-scheme")
-                    currentLicenseUrl = extractAttribute(trimmed, "license-url")
+                    currentDrmScheme = extractAttribute(trimmed, "drm-scheme") ?: extractAttribute(trimmed, "drm_scheme")
+                    currentLicenseUrl = extractAttribute(trimmed, "license-url") ?: extractAttribute(trimmed, "license_url") ?: extractAttribute(trimmed, "license-key") ?: extractAttribute(trimmed, "license_key")
+
+                    val headersAttr = extractAttribute(trimmed, "license-headers") ?: extractAttribute(trimmed, "license_headers")
+                    if (!headersAttr.isNullOrBlank()) {
+                        val headersMap = currentLicenseHeaders ?: mutableMapOf()
+                        headersMap.putAll(parseHeadersString(headersAttr))
+                        currentLicenseHeaders = headersMap
+                    }
 
                     val commaIndex = trimmed.lastIndexOf(',')
                     if (commaIndex != -1 && commaIndex < trimmed.length - 1) {
@@ -41,15 +49,36 @@ object M3UParser {
                         currentName = "Channel ${orderIndex + 1}"
                     }
                 } else if (trimmed.startsWith("#KODIPROP:") || trimmed.startsWith("#EXTVLCOPT:")) {
-                    if (trimmed.contains("license_type", ignoreCase = true) || trimmed.contains("drm", ignoreCase = true)) {
-                        if (trimmed.contains("widevine", ignoreCase = true)) {
-                            currentDrmScheme = "widevine"
-                        }
-                    }
-                    if (trimmed.contains("license_key", ignoreCase = true) || trimmed.contains("license", ignoreCase = true)) {
-                        val parts = trimmed.split("=", limit = 2)
-                        if (parts.size == 2) {
-                            currentLicenseUrl = parts[1].trim()
+                    val colonIdx = trimmed.indexOf(':')
+                    if (colonIdx != -1) {
+                        val propContent = trimmed.substring(colonIdx + 1).trim()
+                        val eqIdx = propContent.indexOf('=')
+                        if (eqIdx != -1) {
+                            val key = propContent.substring(0, eqIdx).trim().lowercase()
+                            val value = propContent.substring(eqIdx + 1).trim()
+
+                            if (key.contains("license_type") || key.contains("drm_type") || key.contains("drm")) {
+                                currentDrmScheme = when {
+                                    value.contains("widevine", ignoreCase = true) -> "widevine"
+                                    value.contains("playready", ignoreCase = true) -> "playready"
+                                    value.contains("clearkey", ignoreCase = true) -> "clearkey"
+                                    else -> value
+                                }
+                            } else if (key.contains("license_key") || key.contains("license_url") || key.contains("license")) {
+                                currentLicenseUrl = value
+                            } else if (key.contains("user_agent") || key.contains("http-user-agent")) {
+                                val headersMap = currentLicenseHeaders ?: mutableMapOf()
+                                headersMap["User-Agent"] = value
+                                currentLicenseHeaders = headersMap
+                            } else if (key.contains("referer") || key.contains("http-referrer")) {
+                                val headersMap = currentLicenseHeaders ?: mutableMapOf()
+                                headersMap["Referer"] = value
+                                currentLicenseHeaders = headersMap
+                            } else if (key.contains("headers") || key.contains("cookie")) {
+                                val headersMap = currentLicenseHeaders ?: mutableMapOf()
+                                headersMap.putAll(parseHeadersString(value))
+                                currentLicenseHeaders = headersMap
+                            }
                         }
                     }
                 } else if (trimmed.startsWith("#")) {
@@ -59,6 +88,20 @@ object M3UParser {
                     if (playlistUrl != null && !streamUrl.startsWith("http://", ignoreCase = true) && !streamUrl.startsWith("https://", ignoreCase = true)) {
                         streamUrl = resolveRelativeUrl(playlistUrl, streamUrl)
                     }
+
+                    var finalLicenseUrl = currentLicenseUrl
+                    var finalLicenseHeaders = currentLicenseHeaders?.toMap()
+
+                    if (!finalLicenseUrl.isNullOrBlank() && finalLicenseUrl.contains("|")) {
+                        val parts = finalLicenseUrl.split("|", limit = 2)
+                        finalLicenseUrl = parts[0].trim()
+                        val headersPart = parts[1].trim()
+                        val parsedHeaders = parseHeadersString(headersPart)
+                        if (parsedHeaders.isNotEmpty()) {
+                            finalLicenseHeaders = (finalLicenseHeaders ?: emptyMap()) + parsedHeaders
+                        }
+                    }
+
                     channels.add(
                         Channel(
                             name = currentName,
@@ -69,21 +112,57 @@ object M3UParser {
                             groupTitle = currentGroupTitle ?: "Uncategorized",
                             orderIndex = orderIndex++,
                             drmScheme = currentDrmScheme,
-                            licenseUrl = currentLicenseUrl,
-                            licenseHeaders = null
+                            licenseUrl = finalLicenseUrl,
+                            licenseHeaders = finalLicenseHeaders
                         )
                     )
+                    onChannelParsed?.invoke(channels.size)
                     currentTvgId = null
                     currentTvgName = null
                     currentTvgLogo = null
                     currentGroupTitle = null
                     currentDrmScheme = null
                     currentLicenseUrl = null
+                    currentLicenseHeaders = null
                     currentName = "Unknown Channel"
                 }
             }
         }
         return channels
+    }
+
+    private fun parseHeadersString(headersStr: String): Map<String, String> {
+        val map = mutableMapOf<String, String>()
+        if (headersStr.contains(":") && !headersStr.contains("=")) {
+            val parts = headersStr.split(":", limit = 2)
+            if (parts.size == 2) {
+                map[parts[0].trim()] = parts[1].trim().removeSurrounding("\"")
+            }
+            return map
+        }
+        val pairs = headersStr.split(Regex("[&\\n;]+"))
+        for (pair in pairs) {
+            val trimmedPair = pair.trim()
+            if (trimmedPair.isEmpty()) continue
+            val eqIndex = trimmedPair.indexOf('=')
+            if (eqIndex != -1) {
+                val k = trimmedPair.substring(0, eqIndex).trim()
+                val v = trimmedPair.substring(eqIndex + 1).trim().removeSurrounding("\"")
+                if (k.isNotEmpty()) {
+                    map[k] = v
+                }
+            } else {
+                val colonIndex = trimmedPair.indexOf(':')
+                if (colonIndex != -1) {
+                    val k = trimmedPair.substring(0, colonIndex).trim()
+                    val v = trimmedPair.substring(colonIndex + 1).trim().removeSurrounding("\"")
+                    if (k.isNotEmpty()) {
+                        map[k] = v
+                    }
+                }
+            }
+        }
+        return map
     }
 
     private fun extractAttribute(line: String, attr: String): String? {

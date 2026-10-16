@@ -16,8 +16,12 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 sealed interface LiveTvUiState {
-    object Loading : LiveTvUiState
-    data class Success(val channels: List<Channel>, val playlistUrl: String?) : LiveTvUiState
+    data class Loading(val message: String = "Loading channels... 0", val count: Int = 0) : LiveTvUiState
+    data class Success(
+        val channels: List<Channel>,
+        val playlistUrl: String?,
+        val epgPrograms: Map<Int, Pair<EpgProgram?, EpgProgram?>> = emptyMap()
+    ) : LiveTvUiState
     data class Empty(val playlistUrl: String?) : LiveTvUiState
     data class Error(val message: String, val cachedChannels: List<Channel>?, val playlistUrl: String?) : LiveTvUiState
 }
@@ -26,11 +30,15 @@ class LiveTvViewModel(application: Application) : AndroidViewModel(application) 
 
     private val repository = PlaylistRepository(application)
 
-    private val _uiState = MutableStateFlow<LiveTvUiState>(LiveTvUiState.Loading)
+    private val _uiState = MutableStateFlow<LiveTvUiState>(LiveTvUiState.Loading())
     val uiState: StateFlow<LiveTvUiState> = _uiState.asStateFlow()
 
     private var currentPlaylistUrl: String? = null
+    private var currentEpgUrl: String? = null
     private var cachedChannels: List<Channel> = emptyList()
+    var epgMap: Map<String, EpgChannelData> = emptyMap()
+        private set
+    private var channelEpgMap: Map<Int, Pair<EpgProgram?, EpgProgram?>> = emptyMap()
 
     init {
         loadInitialData()
@@ -42,9 +50,15 @@ class LiveTvViewModel(application: Application) : AndroidViewModel(application) 
                 repository.loadCachedChannels()
             }
             currentPlaylistUrl = repository.playlistUrlFlow.first()
+            currentEpgUrl = repository.epgUrlFlow.first()
+
+            if (!currentEpgUrl.isNullOrBlank()) {
+                fetchAndParseEpg(currentEpgUrl!!, isBackground = true)
+            }
 
             if (cachedChannels.isNotEmpty()) {
-                _uiState.value = LiveTvUiState.Success(cachedChannels, currentPlaylistUrl)
+                channelEpgMap = EpgMatcher.matchEpg(cachedChannels, epgMap)
+                _uiState.value = LiveTvUiState.Success(cachedChannels, currentPlaylistUrl, channelEpgMap)
                 if (!currentPlaylistUrl.isNullOrBlank()) {
                     refreshPlaylist(currentPlaylistUrl!!, isBackground = true)
                 }
@@ -68,9 +82,50 @@ class LiveTvViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun refreshEpg() {
+        viewModelScope.launch {
+            val url = repository.epgUrlFlow.first()
+            if (!url.isNullOrBlank()) {
+                currentEpgUrl = url
+                fetchAndParseEpg(url, isBackground = false)
+            }
+        }
+    }
+
+    private fun fetchAndParseEpg(urlStr: String, isBackground: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val url = URL(urlStr)
+                val connection = (url.openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 15000
+                    readTimeout = 15000
+                    setRequestProperty("User-Agent", "IPTVMate/1.0")
+                }
+                if (connection.responseCode in 200..299) {
+                    epgMap = connection.inputStream.use { stream ->
+                        XmltvParser.parse(stream)
+                    }
+                    EpgManager.epgMap = epgMap
+
+                    if (cachedChannels.isNotEmpty()) {
+                        channelEpgMap = EpgMatcher.matchEpg(cachedChannels, epgMap)
+                        withContext(Dispatchers.Main) {
+                            if (_uiState.value is LiveTvUiState.Success) {
+                                val current = _uiState.value as LiveTvUiState.Success
+                                _uiState.value = current.copy(epgPrograms = channelEpgMap)
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("LiveTvViewModel", "Failed to fetch EPG: ${e.message}")
+            }
+        }
+    }
+
     private fun fetchAndParsePlaylist(urlStr: String, isBackground: Boolean = false) {
         if (!isBackground) {
-            _uiState.value = LiveTvUiState.Loading
+            _uiState.value = LiveTvUiState.Loading("Connecting to playlist...", 0)
         }
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -87,11 +142,35 @@ class LiveTvViewModel(application: Application) : AndroidViewModel(application) 
                 }
 
                 var channels = connection.inputStream.use { stream ->
-                    M3UParser.parse(stream, urlStr)
+                    M3UParser.parse(stream, urlStr) { count ->
+                        if (!isBackground) {
+                            if (count % 10 == 1 || count < 20) {
+                                viewModelScope.launch(Dispatchers.Main) {
+                                    _uiState.value = LiveTvUiState.Loading("Loading channels... $count", count)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Fetch and match JioTV Go /channels API metadata for DRM
                 channels = fetchJioChannels(urlStr, channels)
+
+                // Try fetching EPG if not already loaded and epgUrl is configured
+                if (epgMap.isEmpty()) {
+                    val epgUrl = repository.epgUrlFlow.first()
+                    if (!epgUrl.isNullOrBlank()) {
+                        try {
+                            val epgConn = URL(epgUrl).openConnection() as HttpURLConnection
+                            if (epgConn.responseCode in 200..299) {
+                                epgMap = epgConn.inputStream.use { XmltvParser.parse(it) }
+                                EpgManager.epgMap = epgMap
+                            }
+                        } catch (_: Exception) {}
+                    }
+                }
+
+                channelEpgMap = EpgMatcher.matchEpg(channels, epgMap)
 
                 if (channels.isEmpty()) {
                     withContext(Dispatchers.Main) {
@@ -105,7 +184,7 @@ class LiveTvViewModel(application: Application) : AndroidViewModel(application) 
                     cachedChannels = channels
                     repository.saveCachedChannels(channels)
                     withContext(Dispatchers.Main) {
-                        _uiState.value = LiveTvUiState.Success(channels, currentPlaylistUrl)
+                        _uiState.value = LiveTvUiState.Success(channels, currentPlaylistUrl, channelEpgMap)
                     }
                 }
             } catch (e: Exception) {
