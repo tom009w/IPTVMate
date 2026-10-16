@@ -24,6 +24,8 @@
     <string name="favorite_toggle">Favorite Toggle</string>
     <string name="search_channels">Channel Search</string>
     <string name="search_hint">Type channel name to search...</string>
+    <string name="additional_settings_title">Additional Settings</string>
+    <string name="additional_settings_button">Additional Settings</string>
     <string name="manage_playlists">Manage Playlists</string>
     <string name="save_order">Save Order</string>
     <string name="move_up">Up</string>
@@ -48,4 +50,14 @@
     <string name="xtream_username_hint">Username</string>
     <string name="xtream_password_hint">Password</string>
     <string name="xtream_connect_button">Save &amp; Load Xtream Codes</string>
+    <string name="mac_portal_section_title">MAC Portal (Stalker Middleware)</string>
+    <string name="mac_portal_url_hint">Portal URL (e.g. http://server.com/c/)</string>
+    <string name="mac_address_hint">MAC Address (e.g. 00:1A:79:XX:XX:XX)</string>
+    <string name="mac_portal_connect_button">Save &amp; Connect MAC Portal</string>
+    <string name="stalker_portal_section_title">Stalker Portal</string>
+    <string name="stalker_portal_url_hint">Portal URL (e.g. http://server.com/c/)</string>
+    <string name="stalker_mac_hint">MAC Address (e.g. 00:1A:79:XX:XX:XX)</string>
+    <string name="stalker_serial_hint">Serial Number (Optional)</string>
+    <string name="stalker_device_id_hint">Device ID (Optional)</string>
+    <string name="stalker_connect_button">Save &amp; Connect Stalker Portal</string>
 </resources>

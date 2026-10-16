@@ -257,7 +257,13 @@ class PlaylistRepository(private val context: Context) {
         val epgUrl: String? = null,
         val xtreamServer: String? = null,
         val xtreamUsername: String? = null,
-        val xtreamPassword: String? = null
+        val xtreamPassword: String? = null,
+        val macPortalUrl: String? = null,
+        val macAddress: String? = null,
+        val stalkerPortalUrl: String? = null,
+        val stalkerMacAddress: String? = null,
+        val stalkerSerial: String? = null,
+        val stalkerDeviceId: String? = null
     )
 
     fun saveAppSettings(settings: AppSettings) {

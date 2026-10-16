@@ -37,6 +37,10 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var tvEpgPanelEmpty: TextView
     private lateinit var rvPlayerEpg: RecyclerView
 
+    // Channel List Panel views
+    private lateinit var layoutChannelListPanel: View
+    private lateinit var rvPlayerChannels: RecyclerView
+
     private var exoPlayer: ExoPlayer? = null
     private var channel: Channel? = null
     private var allChannels: List<Channel> = emptyList()
@@ -58,6 +62,11 @@ class PlayerActivity : AppCompatActivity() {
         rvPlayerEpg = findViewById(R.id.rvPlayerEpg)
         rvPlayerEpg.layoutManager = LinearLayoutManager(this)
 
+        // Channel List Panel init
+        layoutChannelListPanel = findViewById(R.id.layoutChannelListPanel)
+        rvPlayerChannels = findViewById(R.id.rvPlayerChannels)
+        rvPlayerChannels.layoutManager = LinearLayoutManager(this)
+
         channel = intent.getSerializableExtra(EXTRA_CHANNEL) as? Channel
         val repository = PlaylistRepository(applicationContext)
         allChannels = repository.loadCachedChannels()
@@ -78,7 +87,10 @@ class PlayerActivity : AppCompatActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (layoutEpgPanel.visibility == View.VISIBLE) {
+                if (layoutChannelListPanel.visibility == View.VISIBLE) {
+                    layoutChannelListPanel.visibility = View.GONE
+                    playerView.requestFocus()
+                } else if (layoutEpgPanel.visibility == View.VISIBLE) {
                     layoutEpgPanel.visibility = View.GONE
                     playerView.requestFocus()
                 } else {
@@ -91,8 +103,26 @@ class PlayerActivity : AppCompatActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                if (layoutChannelListPanel.visibility == View.VISIBLE) {
+                    layoutChannelListPanel.visibility = View.GONE
+                    playerView.requestFocus()
+                    return true
+                } else if (layoutEpgPanel.visibility == View.VISIBLE) {
+                    layoutEpgPanel.visibility = View.GONE
+                    playerView.requestFocus()
+                    return true
+                } else {
+                    openChannelListPanel()
+                    return true
+                }
+            }
             KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                if (layoutEpgPanel.visibility == View.VISIBLE) {
+                if (layoutChannelListPanel.visibility == View.VISIBLE) {
+                    layoutChannelListPanel.visibility = View.GONE
+                    playerView.requestFocus()
+                    return true
+                } else if (layoutEpgPanel.visibility == View.VISIBLE) {
                     layoutEpgPanel.visibility = View.GONE
                     playerView.requestFocus()
                     return true
@@ -101,27 +131,72 @@ class PlayerActivity : AppCompatActivity() {
                     return true
                 }
             }
-            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_ESCAPE -> {
-                if (layoutEpgPanel.visibility == View.VISIBLE) {
+            KeyEvent.KEYCODE_ESCAPE -> {
+                if (layoutChannelListPanel.visibility == View.VISIBLE) {
+                    layoutChannelListPanel.visibility = View.GONE
+                    playerView.requestFocus()
+                    return true
+                } else if (layoutEpgPanel.visibility == View.VISIBLE) {
                     layoutEpgPanel.visibility = View.GONE
                     playerView.requestFocus()
                     return true
                 }
             }
             KeyEvent.KEYCODE_DPAD_UP -> {
-                if (layoutEpgPanel.visibility != View.VISIBLE) {
+                if (layoutChannelListPanel.visibility != View.VISIBLE && layoutEpgPanel.visibility != View.VISIBLE) {
                     switchChannel(-1)
                     return true
                 }
             }
             KeyEvent.KEYCODE_DPAD_DOWN -> {
-                if (layoutEpgPanel.visibility != View.VISIBLE) {
+                if (layoutChannelListPanel.visibility != View.VISIBLE && layoutEpgPanel.visibility != View.VISIBLE) {
                     switchChannel(1)
                     return true
                 }
             }
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    private fun getCurrentCategoryChannels(): List<Channel> {
+        val currentGroup = channel?.groupTitle?.trim().let { if (it.isNullOrBlank()) "Uncategorized" else it }
+        val categoryChannels = allChannels.filter { (it.groupTitle?.trim().let { t -> if (t.isNullOrBlank()) "Uncategorized" else t }) == currentGroup }
+        return if (categoryChannels.isNotEmpty()) categoryChannels else allChannels
+    }
+
+    private fun openChannelListPanel() {
+        val categoryChannels = getCurrentCategoryChannels()
+        val ch = channel
+        val targetIndex = if (ch != null) {
+            categoryChannels.indexOfFirst { it.streamUrl == ch.streamUrl }.let { if (it != -1) it else 0 }
+        } else {
+            0
+        }
+
+        rvPlayerChannels.adapter = ChannelAdapter(categoryChannels, emptyMap(), showChannelNumber = false) { selectedChannel ->
+            layoutChannelListPanel.visibility = View.GONE
+            channel = selectedChannel
+            val idx = allChannels.indexOfFirst { it.streamUrl == selectedChannel.streamUrl }
+            if (idx != -1) currentChannelIndex = idx
+            logChannelDiagnostics(selectedChannel)
+            playChannel(selectedChannel)
+
+            val repository = PlaylistRepository(applicationContext)
+            val settings = repository.loadAppSettings()
+            repository.saveAppSettings(settings.copy(lastWatchedStreamUrl = selectedChannel.streamUrl))
+
+            playerView.requestFocus()
+        }
+        layoutChannelListPanel.visibility = View.VISIBLE
+        rvPlayerChannels.scrollToPosition(targetIndex)
+        rvPlayerChannels.post {
+            val viewHolder = rvPlayerChannels.findViewHolderForAdapterPosition(targetIndex)
+            if (viewHolder != null) {
+                viewHolder.itemView.requestFocus()
+            } else {
+                rvPlayerChannels.requestFocus()
+            }
+        }
     }
 
     private fun openEpgPanel() {
@@ -148,9 +223,14 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun switchChannel(direction: Int) {
-        if (allChannels.isEmpty()) return
-        currentChannelIndex = (currentChannelIndex + direction + allChannels.size) % allChannels.size
-        channel = allChannels[currentChannelIndex]
+        val categoryChannels = getCurrentCategoryChannels()
+        if (categoryChannels.isEmpty()) return
+
+        val currentIndex = categoryChannels.indexOfFirst { it.streamUrl == channel?.streamUrl }.let { if (it != -1) it else 0 }
+        val nextIndex = (currentIndex + direction + categoryChannels.size) % categoryChannels.size
+        channel = categoryChannels[nextIndex]
+
+        currentChannelIndex = allChannels.indexOfFirst { it.streamUrl == channel?.streamUrl }.let { if (it != -1) it else 0 }
 
         channel?.let { ch ->
             logChannelDiagnostics(ch)
@@ -246,6 +326,10 @@ class PlayerActivity : AppCompatActivity() {
 
         val mediaItem = buildMediaItem(ch)
 
+        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setBufferDurationsMs(1500, 30000, 1000, 1500)
+            .build()
+
         val trackSelector = DefaultTrackSelector(this).apply {
             setParameters(
                 buildUponParameters()
@@ -254,10 +338,6 @@ class PlayerActivity : AppCompatActivity() {
                     .setExceedRendererCapabilitiesIfNecessary(true)
             )
         }
-
-        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
-            .setBufferDurationsMs(1500, 30000, 1000, 1500)
-            .build()
 
         exoPlayer = ExoPlayer.Builder(this)
             .setLoadControl(loadControl)

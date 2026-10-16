@@ -16,6 +16,7 @@ import java.util.Locale
 class ChannelAdapter(
     private val channels: List<Channel>,
     private val epgPrograms: Map<Int, Pair<EpgProgram?, EpgProgram?>> = emptyMap(),
+    private val showChannelNumber: Boolean = true,
     private val onChannelClick: (Channel) -> Unit
 ) : RecyclerView.Adapter<ChannelAdapter.ChannelViewHolder>() {
 
@@ -34,7 +35,12 @@ class ChannelAdapter(
 
     override fun onBindViewHolder(holder: ChannelViewHolder, position: Int) {
         val channel = channels[position]
-        holder.tvChannelNumber.text = (position + 1).toString()
+        if (showChannelNumber) {
+            holder.tvChannelNumber.text = (position + 1).toString()
+            holder.tvChannelNumber.visibility = View.VISIBLE
+        } else {
+            holder.tvChannelNumber.visibility = View.GONE
+        }
         holder.tvChannelName.text = channel.name
 
         val programPair = epgPrograms[channel.orderIndex]
