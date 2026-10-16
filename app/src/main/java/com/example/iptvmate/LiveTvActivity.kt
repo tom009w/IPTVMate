@@ -35,6 +35,7 @@ class LiveTvActivity : AppCompatActivity() {
 
     // Second-level Main Menu views
     private lateinit var layoutMainMenu: View
+    private lateinit var menuSearch: Button
     private lateinit var menuSettings: Button
     private lateinit var menuEpg: Button
     private lateinit var menuExit: Button
@@ -71,10 +72,14 @@ class LiveTvActivity : AppCompatActivity() {
 
         // Main Menu init
         layoutMainMenu = findViewById(R.id.layoutMainMenu)
+        menuSearch = findViewById(R.id.menuSearch)
         menuSettings = findViewById(R.id.menuSettings)
         menuEpg = findViewById(R.id.menuEpg)
         menuExit = findViewById(R.id.menuExit)
 
+        menuSearch.setOnClickListener {
+            startActivity(Intent(this, SearchActivity::class.java))
+        }
         menuSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
@@ -116,6 +121,11 @@ class LiveTvActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.reloadChannels()
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
@@ -195,8 +205,13 @@ class LiveTvActivity : AppCompatActivity() {
                 val groups = GroupExtractor.extractGroups(allChannels, config.order, config.hidden)
                 rvGroups.adapter = GroupAdapter(groups) { group ->
                     selectedGroup = group
-                    rvGroups.visibility = View.GONE
-                    rvChannels.requestFocus()
+                    val filtered = GroupExtractor.filterChannels(allChannels, selectedGroup)
+                    if (filtered.isEmpty()) {
+                        Toast.makeText(this, "No channels found in $group", Toast.LENGTH_SHORT).show()
+                    } else {
+                        rvGroups.visibility = View.GONE
+                        rvChannels.requestFocus()
+                    }
                     updateChannelList()
                 }
 
@@ -233,8 +248,13 @@ class LiveTvActivity : AppCompatActivity() {
                 val groups = GroupExtractor.extractGroups(allChannels, config.order, config.hidden)
                     rvGroups.adapter = GroupAdapter(groups) { group ->
                         selectedGroup = group
-                        rvGroups.visibility = View.GONE
-                        rvChannels.requestFocus()
+                        val filtered = GroupExtractor.filterChannels(allChannels, selectedGroup)
+                        if (filtered.isEmpty()) {
+                            Toast.makeText(this, "No channels found in $group", Toast.LENGTH_SHORT).show()
+                        } else {
+                            rvGroups.visibility = View.GONE
+                            rvChannels.requestFocus()
+                        }
                         updateChannelList()
                     }
                     updateChannelList()

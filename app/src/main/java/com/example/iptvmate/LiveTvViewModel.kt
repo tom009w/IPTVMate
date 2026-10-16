@@ -153,6 +153,9 @@ class LiveTvViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
 
+                val latestCached = repository.loadCachedChannels()
+                channels = mergeChannelOrders(latestCached, channels)
+
                 // Fetch and match JioTV Go /channels API metadata for DRM
                 channels = fetchJioChannels(urlStr, channels)
 
@@ -236,5 +239,51 @@ class LiveTvViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun refreshPlaylist(url: String, isBackground: Boolean) {
         fetchAndParsePlaylist(url, isBackground = isBackground)
+    }
+
+    fun reloadChannels() {
+        viewModelScope.launch {
+            cachedChannels = withContext(Dispatchers.IO) {
+                repository.loadCachedChannels()
+            }
+            if (cachedChannels.isNotEmpty()) {
+                channelEpgMap = EpgMatcher.matchEpg(cachedChannels, epgMap)
+                _uiState.value = LiveTvUiState.Success(cachedChannels, currentPlaylistUrl, channelEpgMap)
+            }
+        }
+    }
+
+    private fun mergeChannelOrders(existing: List<Channel>, incoming: List<Channel>): List<Channel> {
+        if (existing.isEmpty()) return incoming
+
+        val existingMap = existing.associateBy { it.streamUrl }
+        val incomingMap = incoming.associateBy { it.streamUrl }
+
+        val merged = mutableListOf<Channel>()
+
+        for (exCh in existing) {
+            val fresh = incomingMap[exCh.streamUrl]
+            if (fresh != null) {
+                merged.add(
+                    fresh.copy(
+                        orderIndex = exCh.orderIndex,
+                        isFavorite = exCh.isFavorite
+                    )
+                )
+            } else {
+                merged.add(exCh)
+            }
+        }
+
+        for (inCh in incoming) {
+            if (!existingMap.containsKey(inCh.streamUrl)) {
+                merged.add(inCh.copy(orderIndex = merged.size))
+            }
+        }
+
+        val sorted = merged.sortedBy { it.orderIndex }
+        return sorted.mapIndexed { index, channel ->
+            channel.copy(orderIndex = index)
+        }
     }
 }

@@ -53,6 +53,10 @@
             android:exported="false"
             android:screenOrientation="landscape" />
         <activity
+            android:name=".SearchActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity
             android:name=".CategoryOrderActivity"
             android:exported="false"
             android:screenOrientation="landscape" />

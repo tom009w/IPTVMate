@@ -13,5 +13,6 @@ data class Channel(
     val orderIndex: Int,
     val drmScheme: String? = null,
     val licenseUrl: String? = null,
-    val licenseHeaders: Map<String, String>? = null
+    val licenseHeaders: Map<String, String>? = null,
+    val isFavorite: Boolean = false
 ) : Serializable

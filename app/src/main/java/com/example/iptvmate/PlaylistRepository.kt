@@ -112,9 +112,13 @@ class PlaylistRepository(private val context: Context) {
 
     suspend fun saveEpgUrl(url: String) {
         val settings = loadAppSettings()
-        saveAppSettings(settings.copy(epgUrl = url))
+        saveAppSettings(settings.copy(epgUrl = url.takeIf { it.isNotBlank() }))
         context.dataStore.edit { preferences ->
-            preferences[EPG_URL_KEY] = url
+            if (url.isBlank()) {
+                preferences.remove(EPG_URL_KEY)
+            } else {
+                preferences[EPG_URL_KEY] = url
+            }
             val json = preferences[PLAYLISTS_JSON_KEY]
             val type = object : TypeToken<List<Playlist>>() {}.type
             val list = if (!json.isNullOrBlank()) {
@@ -129,7 +133,7 @@ class PlaylistRepository(private val context: Context) {
             val activeId = preferences[ACTIVE_PLAYLIST_ID_KEY]
             val existing = list.find { it.id == activeId }
             if (existing != null) {
-                val updated = existing.copy(epgUrl = url)
+                val updated = existing.copy(epgUrl = url.takeIf { it.isNotBlank() })
                 val idx = list.indexOf(existing)
                 list[idx] = updated
                 preferences[PLAYLISTS_JSON_KEY] = gson.toJson(list)
