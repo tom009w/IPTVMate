@@ -7,7 +7,6 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class SettingsActivity : AppCompatActivity() {
@@ -37,16 +36,12 @@ class SettingsActivity : AppCompatActivity() {
         val appSettings = repository.loadAppSettings()
         switchAutoPlayLastChannel.isChecked = appSettings.autoPlayLastChannel
 
-        lifecycleScope.launch {
-            val currentUrl = repository.playlistUrlFlow.first()
-            if (!currentUrl.isNullOrBlank()) {
-                etSettingsPlaylistUrl.setText(currentUrl)
-                etSettingsPlaylistUrl.setSelection(currentUrl.length)
-            }
-            val currentEpgUrl = repository.epgUrlFlow.first()
-            if (!currentEpgUrl.isNullOrBlank()) {
-                etSettingsEpgUrl.setText(currentEpgUrl)
-            }
+        if (!appSettings.playlistUrl.isNullOrBlank()) {
+            etSettingsPlaylistUrl.setText(appSettings.playlistUrl)
+            etSettingsPlaylistUrl.setSelection(appSettings.playlistUrl.length)
+        }
+        if (!appSettings.epgUrl.isNullOrBlank()) {
+            etSettingsEpgUrl.setText(appSettings.epgUrl)
         }
 
         btnManagePlaylists.setOnClickListener {
@@ -73,7 +68,11 @@ class SettingsActivity : AppCompatActivity() {
                 repository.savePlaylistUrl(url)
                 repository.saveEpgUrl(epgUrl)
                 val settings = repository.loadAppSettings()
-                repository.saveAppSettings(settings.copy(autoPlayLastChannel = switchAutoPlayLastChannel.isChecked))
+                repository.saveAppSettings(settings.copy(
+                    playlistUrl = url,
+                    epgUrl = epgUrl,
+                    autoPlayLastChannel = switchAutoPlayLastChannel.isChecked
+                ))
                 Toast.makeText(this@SettingsActivity, "Settings saved", Toast.LENGTH_SHORT).show()
                 finish()
             }

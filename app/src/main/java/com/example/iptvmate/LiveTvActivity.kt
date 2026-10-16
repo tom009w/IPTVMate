@@ -76,11 +76,9 @@ class LiveTvActivity : AppCompatActivity() {
         menuExit = findViewById(R.id.menuExit)
 
         menuSettings.setOnClickListener {
-            layoutMainMenu.visibility = View.GONE
             startActivity(Intent(this, SettingsActivity::class.java))
         }
         menuEpg.setOnClickListener {
-            layoutMainMenu.visibility = View.GONE
             startActivity(Intent(this, EpgActivity::class.java))
         }
         menuExit.setOnClickListener {

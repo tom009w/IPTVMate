@@ -19,6 +19,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -165,20 +166,7 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
-    private fun playChannel(ch: Channel) {
-        val dataSourceFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent(Util.getUserAgent(this, "IPTVMate"))
-            .setAllowCrossProtocolRedirects(true)
-            .setConnectTimeoutMs(15000)
-            .setReadTimeoutMs(15000)
-
-        if (!ch.licenseHeaders.isNullOrEmpty()) {
-            dataSourceFactory.setDefaultRequestProperties(ch.licenseHeaders)
-        }
-
-        val mediaSourceFactory = DefaultMediaSourceFactory(this)
-            .setDataSourceFactory(dataSourceFactory)
-
+    private fun buildMediaItem(ch: Channel): MediaItem {
         val mediaItemBuilder = MediaItem.Builder().setUri(ch.streamUrl)
 
         if (ch.streamUrl.contains("/mpd/", ignoreCase = true) || ch.streamUrl.endsWith(".mpd", ignoreCase = true)) {
@@ -200,9 +188,13 @@ class PlayerActivity : AppCompatActivity() {
             }
             mediaItemBuilder.setDrmConfiguration(drmConfigBuilder.build())
         }
+        return mediaItemBuilder.build()
+    }
 
+    private fun playChannel(ch: Channel) {
+        val mediaItem = buildMediaItem(ch)
         exoPlayer?.apply {
-            setMediaItem(mediaItemBuilder.build())
+            setMediaItem(mediaItem)
             prepare()
             playWhenReady = true
         }
@@ -252,34 +244,24 @@ class PlayerActivity : AppCompatActivity() {
         val mediaSourceFactory = DefaultMediaSourceFactory(this)
             .setDataSourceFactory(dataSourceFactory)
 
-        val mediaItemBuilder = MediaItem.Builder().setUri(ch.streamUrl)
+        val mediaItem = buildMediaItem(ch)
 
-        if (ch.streamUrl.contains("/mpd/", ignoreCase = true) || ch.streamUrl.endsWith(".mpd", ignoreCase = true)) {
-            mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_MPD)
-        } else if (ch.streamUrl.contains("/m3u8/", ignoreCase = true) || ch.streamUrl.endsWith(".m3u8", ignoreCase = true)) {
-            mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_M3U8)
-        }
-
-        if (!ch.licenseUrl.isNullOrBlank()) {
-            val schemeUuid = when (ch.drmScheme?.lowercase()) {
-                "widevine", "com.widevine.alpha" -> C.WIDEVINE_UUID
-                "playready", "com.microsoft.playready" -> C.PLAYREADY_UUID
-                else -> C.WIDEVINE_UUID
-            }
-            val drmConfigBuilder = MediaItem.DrmConfiguration.Builder(schemeUuid)
-                .setLicenseUri(ch.licenseUrl)
-            if (!ch.licenseHeaders.isNullOrEmpty()) {
-                drmConfigBuilder.setLicenseRequestHeaders(ch.licenseHeaders)
-            }
-            mediaItemBuilder.setDrmConfiguration(drmConfigBuilder.build())
+        val trackSelector = DefaultTrackSelector(this).apply {
+            setParameters(
+                buildUponParameters()
+                    .setMaxVideoSize(3840, 2160)
+                    .setExceedVideoConstraintsIfNecessary(true)
+                    .setExceedRendererCapabilitiesIfNecessary(true)
+            )
         }
 
         exoPlayer = ExoPlayer.Builder(this)
+            .setTrackSelector(trackSelector)
             .setMediaSourceFactory(mediaSourceFactory)
             .build()
             .apply {
                 playerView.player = this
-                setMediaItem(mediaItemBuilder.build())
+                setMediaItem(mediaItem)
                 prepare()
                 playWhenReady = true
 

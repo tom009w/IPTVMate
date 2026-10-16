@@ -76,6 +76,8 @@ class PlaylistRepository(private val context: Context) {
     }
 
     suspend fun savePlaylistUrl(url: String) {
+        val settings = loadAppSettings()
+        saveAppSettings(settings.copy(playlistUrl = url))
         context.dataStore.edit { preferences ->
             preferences[PLAYLIST_URL_KEY] = url
             val json = preferences[PLAYLISTS_JSON_KEY]
@@ -109,6 +111,8 @@ class PlaylistRepository(private val context: Context) {
     }
 
     suspend fun saveEpgUrl(url: String) {
+        val settings = loadAppSettings()
+        saveAppSettings(settings.copy(epgUrl = url))
         context.dataStore.edit { preferences ->
             preferences[EPG_URL_KEY] = url
             val json = preferences[PLAYLISTS_JSON_KEY]
@@ -244,7 +248,9 @@ class PlaylistRepository(private val context: Context) {
 
     data class AppSettings(
         val autoPlayLastChannel: Boolean = false,
-        val lastWatchedStreamUrl: String? = null
+        val lastWatchedStreamUrl: String? = null,
+        val playlistUrl: String? = null,
+        val epgUrl: String? = null
     )
 
     fun saveAppSettings(settings: AppSettings) {
