@@ -19,6 +19,8 @@
     <string name="save_settings">Save Settings</string>
     <string name="rearrange_channels">Rearrange Channels</string>
     <string name="rearrange_categories">Rearrange Categories</string>
+    <string name="auto_play_last_channel">Automatically start last channel</string>
+    <string name="category_visible">Visible</string>
     <string name="manage_playlists">Manage Playlists</string>
     <string name="save_order">Save Order</string>
     <string name="move_up">Up</string>

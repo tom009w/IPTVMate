@@ -1,3 +1,8 @@
 <resources>
-    <style name="Theme.IPTVMate" parent="@style/Theme.AppCompat.DayNight.NoActionBar" />
+    <style name="Theme.IPTVMate" parent="@style/Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/cinema_primary</item>
+        <item name="colorAccent">@color/cinema_secondary</item>
+        <item name="android:windowBackground">@color/cinema_background</item>
+        <item name="android:colorBackground">@color/cinema_background</item>
+    </style>
 </resources>

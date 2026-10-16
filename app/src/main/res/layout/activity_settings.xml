@@ -1,115 +1,152 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF121212"
-    android:orientation="vertical"
-    android:padding="48dp">
+    android:background="@color/cinema_background"
+    android:fillViewport="true">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="32dp"
-        android:text="@string/settings"
-        android:textColor="#FFFFFFFF"
-        android:textSize="32sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:text="@string/default_playlist_url"
-        android:textColor="#FFB0B0B0"
-        android:textSize="16sp" />
-
-    <EditText
-        android:id="@+id/etSettingsPlaylistUrl"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:autofillHints="uri"
-        android:hint="@string/playlist_url_hint"
-        android:inputType="textUri"
-        android:maxLines="1"
-        android:textColor="#FFFFFFFF"
-        android:textColorHint="#80FFFFFF"
-        android:textSize="16sp" />
+        android:orientation="vertical"
+        android:padding="48dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:text="@string/epg_url_label"
-        android:textColor="#FFB0B0B0"
-        android:textSize="16sp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="32dp"
+            android:text="@string/settings"
+            android:textColor="@color/cinema_text_primary"
+            android:textSize="32sp"
+            android:textStyle="bold" />
 
-    <EditText
-        android:id="@+id/etSettingsEpgUrl"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
-        android:autofillHints="uri"
-        android:hint="@string/epg_url_hint"
-        android:inputType="textUri"
-        android:maxLines="1"
-        android:textColor="#FFFFFFFF"
-        android:textColorHint="#80FFFFFF"
-        android:textSize="16sp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="@string/default_playlist_url"
+            android:textColor="@color/cinema_text_secondary"
+            android:textSize="16sp" />
 
-    <Button
-        android:id="@+id/btnManagePlaylists"
-        android:layout_width="220dp"
-        android:layout_height="50dp"
-        android:layout_marginBottom="16dp"
-        android:background="@drawable/tv_focusable_background"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:gravity="center"
-        android:text="@string/manage_playlists"
-        android:textColor="#FFFFFFFF"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        <EditText
+            android:id="@+id/etSettingsPlaylistUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:autofillHints="uri"
+            android:hint="@string/playlist_url_hint"
+            android:inputType="textUri"
+            android:maxLines="1"
+            android:textColor="@color/cinema_text_primary"
+            android:textColorHint="#80FFFFFF"
+            android:textSize="16sp" />
 
-    <Button
-        android:id="@+id/btnRearrangeChannels"
-        android:layout_width="220dp"
-        android:layout_height="50dp"
-        android:layout_marginBottom="16dp"
-        android:background="@drawable/tv_focusable_background"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:gravity="center"
-        android:text="@string/rearrange_channels"
-        android:textColor="#FFFFFFFF"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="@string/epg_url_label"
+            android:textColor="@color/cinema_text_secondary"
+            android:textSize="16sp" />
 
-    <Button
-        android:id="@+id/btnRearrangeCategories"
-        android:layout_width="220dp"
-        android:layout_height="50dp"
-        android:layout_marginBottom="16dp"
-        android:background="@drawable/tv_focusable_background"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:gravity="center"
-        android:text="@string/rearrange_categories"
-        android:textColor="#FFFFFFFF"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        <EditText
+            android:id="@+id/etSettingsEpgUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:autofillHints="uri"
+            android:hint="@string/epg_url_hint"
+            android:inputType="textUri"
+            android:maxLines="1"
+            android:textColor="@color/cinema_text_primary"
+            android:textColorHint="#80FFFFFF"
+            android:textSize="16sp" />
 
-    <Button
-        android:id="@+id/btnSaveSettings"
-        android:layout_width="200dp"
-        android:layout_height="60dp"
-        android:background="@drawable/tv_focusable_background"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:gravity="center"
-        android:text="@string/save_settings"
-        android:textColor="#FFFFFFFF"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        <Button
+            android:id="@+id/btnManagePlaylists"
+            android:layout_width="220dp"
+            android:layout_height="50dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/tv_focusable_background"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:gravity="center"
+            android:text="@string/manage_playlists"
+            android:textColor="@color/cinema_text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
-</LinearLayout>
+        <Button
+            android:id="@+id/btnRearrangeChannels"
+            android:layout_width="220dp"
+            android:layout_height="50dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/tv_focusable_background"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:gravity="center"
+            android:text="@string/rearrange_channels"
+            android:textColor="@color/cinema_text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnRearrangeCategories"
+            android:layout_width="220dp"
+            android:layout_height="50dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/tv_focusable_background"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:gravity="center"
+            android:text="@string/rearrange_categories"
+            android:textColor="@color/cinema_text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/layoutAutoPlayRow"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/tv_focusable_background"
+            android:clickable="true"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/auto_play_last_channel"
+                android:textColor="@color/cinema_text_primary"
+                android:textSize="16sp" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switchAutoPlayLastChannel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="false"
+                android:focusable="false"
+                android:focusableInTouchMode="false" />
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnSaveSettings"
+            android:layout_width="200dp"
+            android:layout_height="60dp"
+            android:background="@drawable/tv_focusable_background"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:gravity="center"
+            android:text="@string/save_settings"
+            android:textColor="@color/cinema_text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+</ScrollView>

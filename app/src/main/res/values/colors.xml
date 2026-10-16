@@ -1,8 +1,18 @@
 <resources>
-    <color name="background_gradient_start">#000000</color>
-    <color name="background_gradient_end">#DDDDDD</color>
-    <color name="fastlane_background">#0096a6</color>
-    <color name="search_opaque">#ffaa3f</color>
-    <color name="selected_background">#ffaa3f</color>
-    <color name="default_background">#3d3d3d</color>
+    <color name="cinema_background">#0D0D11</color>
+    <color name="cinema_surface">#161622</color>
+    <color name="cinema_surface_variant">#212133</color>
+    <color name="cinema_primary">#00E5FF</color>
+    <color name="cinema_secondary">#7C4DFF</color>
+    <color name="cinema_text_primary">#FFFFFF</color>
+    <color name="cinema_text_secondary">#B0B0C0</color>
+    <color name="cinema_divider">#2A2A3E</color>
+    <color name="cinema_focus">#3300E5FF</color>
+
+    <color name="background_gradient_start">#0D0D11</color>
+    <color name="background_gradient_end">#161622</color>
+    <color name="fastlane_background">#00E5FF</color>
+    <color name="search_opaque">#7C4DFF</color>
+    <color name="selected_background">#00E5FF</color>
+    <color name="default_background">#161622</color>
 </resources>

@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF121212"
+    android:background="@color/cinema_background"
     android:orientation="vertical"
     android:padding="48dp"
     tools:context=".MainActivity">
@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="32dp"
         android:text="@string/app_name"
-        android:textColor="#FFFFFFFF"
+        android:textColor="@color/cinema_text_primary"
         android:textSize="36sp"
         android:textStyle="bold" />
 
@@ -33,7 +33,7 @@
             android:focusableInTouchMode="true"
             android:gravity="center"
             android:text="@string/live_tv"
-            android:textColor="#FFFFFFFF"
+            android:textColor="@color/cinema_text_primary"
             android:textSize="20sp"
             android:textStyle="bold" />
 
@@ -46,7 +46,7 @@
             android:focusableInTouchMode="true"
             android:gravity="center"
             android:text="@string/settings"
-            android:textColor="#FFFFFFFF"
+            android:textColor="@color/cinema_text_primary"
             android:textSize="20sp"
             android:textStyle="bold" />
 

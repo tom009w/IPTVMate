@@ -45,6 +45,7 @@ class LiveTvActivity : AppCompatActivity() {
     private var selectedGroup: String = "All Channels"
     private var lastBackPressTime = 0L
     private var hasPromptedForPlaylist = false
+    private var hasAutoPlayedLastChannel = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -192,7 +193,8 @@ class LiveTvActivity : AppCompatActivity() {
                 EpgManager.epgMap = viewModel.epgMap
 
                 val repo = PlaylistRepository(applicationContext)
-                val groups = GroupExtractor.extractGroups(allChannels, repo.loadCategoryOrder())
+                val config = repo.loadCategoryConfig()
+                val groups = GroupExtractor.extractGroups(allChannels, config.order, config.hidden)
                 rvGroups.adapter = GroupAdapter(groups) { group ->
                     selectedGroup = group
                     rvGroups.visibility = View.GONE
@@ -201,6 +203,21 @@ class LiveTvActivity : AppCompatActivity() {
                 }
 
                 updateChannelList()
+
+                if (!hasAutoPlayedLastChannel) {
+                    hasAutoPlayedLastChannel = true
+                    val settings = repo.loadAppSettings()
+                    if (settings.autoPlayLastChannel) {
+                        val targetUrl = settings.lastWatchedStreamUrl
+                        val targetChannel = allChannels.find { it.streamUrl == targetUrl } ?: allChannels.firstOrNull()
+                        if (targetChannel != null) {
+                            val intent = Intent(this, PlayerActivity::class.java).apply {
+                                putExtra(PlayerActivity.EXTRA_CHANNEL, targetChannel)
+                            }
+                            startActivity(intent)
+                        }
+                    }
+                }
             }
             is LiveTvUiState.Error -> {
                 progressBar.visibility = View.GONE
@@ -214,7 +231,8 @@ class LiveTvActivity : AppCompatActivity() {
                     rvChannels.visibility = View.VISIBLE
                     allChannels = channelsToShow
                     val repo = PlaylistRepository(applicationContext)
-                val groups = GroupExtractor.extractGroups(allChannels, repo.loadCategoryOrder())
+                val config = repo.loadCategoryConfig()
+                val groups = GroupExtractor.extractGroups(allChannels, config.order, config.hidden)
                     rvGroups.adapter = GroupAdapter(groups) { group ->
                         selectedGroup = group
                         rvGroups.visibility = View.GONE

@@ -187,9 +187,14 @@ class PlaylistRepository(private val context: Context) {
 
     private val categoryOrderCacheFile = File(context.filesDir, "category_order_cache.json")
 
-    fun saveCategoryOrder(order: List<String>) {
+    data class CategoryConfig(
+        val order: List<String> = emptyList(),
+        val hidden: List<String> = emptyList()
+    )
+
+    fun saveCategoryConfig(config: CategoryConfig) {
         try {
-            val json = gson.toJson(order)
+            val json = gson.toJson(config)
             FileWriter(categoryOrderCacheFile).use { writer ->
                 writer.write(json)
             }
@@ -198,16 +203,70 @@ class PlaylistRepository(private val context: Context) {
         }
     }
 
-    fun loadCategoryOrder(): List<String> {
-        if (!categoryOrderCacheFile.exists()) return emptyList()
+    fun loadCategoryConfig(): CategoryConfig {
+        if (!categoryOrderCacheFile.exists()) return CategoryConfig()
         return try {
             FileReader(categoryOrderCacheFile).use { reader ->
-                val type = object : TypeToken<List<String>>() {}.type
-                gson.fromJson<List<String>>(reader, type) ?: emptyList()
+                val jsonStr = reader.readText()
+                if (jsonStr.trim().startsWith("[")) {
+                    val listType = object : TypeToken<List<String>>() {}.type
+                    val list = gson.fromJson<List<String>>(jsonStr, listType) ?: emptyList()
+                    CategoryConfig(order = list, hidden = emptyList())
+                } else {
+                    gson.fromJson(jsonStr, CategoryConfig::class.java) ?: CategoryConfig()
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            emptyList()
+            CategoryConfig()
+        }
+    }
+
+    fun saveCategoryOrder(order: List<String>) {
+        val current = loadCategoryConfig()
+        saveCategoryConfig(current.copy(order = order))
+    }
+
+    fun loadCategoryOrder(): List<String> {
+        return loadCategoryConfig().order
+    }
+
+    fun saveHiddenCategories(hidden: List<String>) {
+        val current = loadCategoryConfig()
+        saveCategoryConfig(current.copy(hidden = hidden))
+    }
+
+    fun loadHiddenCategories(): List<String> {
+        return loadCategoryConfig().hidden
+    }
+
+    private val settingsCacheFile = File(context.filesDir, "settings_cache.json")
+
+    data class AppSettings(
+        val autoPlayLastChannel: Boolean = false,
+        val lastWatchedStreamUrl: String? = null
+    )
+
+    fun saveAppSettings(settings: AppSettings) {
+        try {
+            val json = gson.toJson(settings)
+            FileWriter(settingsCacheFile).use { writer ->
+                writer.write(json)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun loadAppSettings(): AppSettings {
+        if (!settingsCacheFile.exists()) return AppSettings()
+        return try {
+            FileReader(settingsCacheFile).use { reader ->
+                gson.fromJson(reader, AppSettings::class.java) ?: AppSettings()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            AppSettings()
         }
     }
 }

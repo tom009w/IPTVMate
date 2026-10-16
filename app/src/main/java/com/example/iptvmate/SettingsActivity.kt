@@ -17,6 +17,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var btnManagePlaylists: Button
     private lateinit var btnRearrangeChannels: Button
     private lateinit var btnRearrangeCategories: Button
+    private lateinit var switchAutoPlayLastChannel: androidx.appcompat.widget.SwitchCompat
     private lateinit var btnSaveSettings: Button
     private lateinit var repository: PlaylistRepository
 
@@ -29,8 +30,12 @@ class SettingsActivity : AppCompatActivity() {
         btnManagePlaylists = findViewById(R.id.btnManagePlaylists)
         btnRearrangeChannels = findViewById(R.id.btnRearrangeChannels)
         btnRearrangeCategories = findViewById(R.id.btnRearrangeCategories)
+        switchAutoPlayLastChannel = findViewById(R.id.switchAutoPlayLastChannel)
         btnSaveSettings = findViewById(R.id.btnSaveSettings)
         repository = PlaylistRepository(applicationContext)
+
+        val appSettings = repository.loadAppSettings()
+        switchAutoPlayLastChannel.isChecked = appSettings.autoPlayLastChannel
 
         lifecycleScope.launch {
             val currentUrl = repository.playlistUrlFlow.first()
@@ -56,12 +61,19 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, CategoryOrderActivity::class.java))
         }
 
+        val layoutAutoPlayRow = findViewById<android.view.View>(R.id.layoutAutoPlayRow)
+        layoutAutoPlayRow.setOnClickListener {
+            switchAutoPlayLastChannel.isChecked = !switchAutoPlayLastChannel.isChecked
+        }
+
         btnSaveSettings.setOnClickListener {
             val url = etSettingsPlaylistUrl.text.toString().trim()
             val epgUrl = etSettingsEpgUrl.text.toString().trim()
             lifecycleScope.launch {
                 repository.savePlaylistUrl(url)
                 repository.saveEpgUrl(epgUrl)
+                val settings = repository.loadAppSettings()
+                repository.saveAppSettings(settings.copy(autoPlayLastChannel = switchAutoPlayLastChannel.isChecked))
                 Toast.makeText(this@SettingsActivity, "Settings saved", Toast.LENGTH_SHORT).show()
                 finish()
             }

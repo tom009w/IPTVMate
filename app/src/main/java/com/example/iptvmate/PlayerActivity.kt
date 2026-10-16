@@ -65,6 +65,9 @@ class PlayerActivity : AppCompatActivity() {
             currentChannelIndex = allChannels.indexOfFirst { it.streamUrl == channel?.streamUrl }.let { if (it != -1) it else 0 }
             logChannelDiagnostics(channel!!)
             initPlayer(channel!!)
+
+            val settings = repository.loadAppSettings()
+            repository.saveAppSettings(settings.copy(lastWatchedStreamUrl = channel!!.streamUrl))
         } else {
             Log.e(TAG, "No channel specified in intent extra")
             tvError.text = "No channel specified"
@@ -151,6 +154,11 @@ class PlayerActivity : AppCompatActivity() {
         channel?.let { ch ->
             logChannelDiagnostics(ch)
             playChannel(ch)
+
+            val repository = PlaylistRepository(applicationContext)
+            val settings = repository.loadAppSettings()
+            repository.saveAppSettings(settings.copy(lastWatchedStreamUrl = ch.streamUrl))
+
             if (layoutEpgPanel.visibility == View.VISIBLE) {
                 openEpgPanel()
             }
