@@ -58,7 +58,7 @@ class LiveTvActivity : AppCompatActivity() {
         tvLoadingProgress = findViewById(R.id.tvLoadingProgress)
         tvEmpty = findViewById(R.id.tvEmpty)
         tvEmpty.setOnClickListener {
-            showPlaylistUrlDialog(currentUrl)
+            showMandatoryPlaylistDialog(currentUrl)
         }
         tvError = findViewById(R.id.tvError)
         rvChannels = findViewById(R.id.rvChannels)
@@ -187,7 +187,7 @@ class LiveTvActivity : AppCompatActivity() {
 
                 if (!hasPromptedForPlaylist) {
                     hasPromptedForPlaylist = true
-                    showPlaylistUrlDialog(state.playlistUrl)
+                    showMandatoryPlaylistDialog(state.playlistUrl)
                 }
             }
             is LiveTvUiState.Success -> {
@@ -277,7 +277,7 @@ class LiveTvActivity : AppCompatActivity() {
         }
     }
 
-    private fun showPlaylistUrlDialog(existingUrl: String?) {
+    private fun showMandatoryPlaylistDialog(existingUrl: String?) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_playlist_url, null)
         val etUrl = dialogView.findViewById<EditText>(R.id.etPlaylistUrl)
         if (!existingUrl.isNullOrBlank()) {
@@ -288,17 +288,37 @@ class LiveTvActivity : AppCompatActivity() {
         val dialog = AlertDialog.Builder(this)
             .setTitle(getString(R.string.playlist_dialog_title))
             .setView(dialogView)
-            .setPositiveButton("Load") { _, _ ->
-                val url = etUrl.text.toString().trim()
-                viewModel.loadPlaylist(url)
-            }
-            .setNegativeButton("Cancel", null)
+            .setCancelable(false)
+            .setPositiveButton("Load", null)
+            .setNeutralButton("Additional Settings", null)
+            .setNegativeButton("Exit", null)
             .create()
 
         dialog.setOnShowListener {
             dialog.window?.decorView?.setBackgroundColor(android.graphics.Color.parseColor("#1E1E2E"))
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(android.graphics.Color.parseColor("#00E5FF"))
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(android.graphics.Color.parseColor("#B0BEC5"))
+            val posButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+            posButton.setTextColor(android.graphics.Color.parseColor("#00E5FF"))
+            posButton.setOnClickListener {
+                val url = etUrl.text.toString().trim()
+                if (url.isBlank()) {
+                    Toast.makeText(this, "Playlist URL cannot be empty", Toast.LENGTH_SHORT).show()
+                } else {
+                    viewModel.loadPlaylist(url)
+                    dialog.dismiss()
+                }
+            }
+
+            val neutralButton = dialog.getButton(AlertDialog.BUTTON_NEUTRAL)
+            neutralButton.setTextColor(android.graphics.Color.parseColor("#00E5FF"))
+            neutralButton.setOnClickListener {
+                startActivity(Intent(this, AdditionalSettingsActivity::class.java))
+            }
+
+            val negButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
+            negButton.setTextColor(android.graphics.Color.parseColor("#B0BEC5"))
+            negButton.setOnClickListener {
+                finishAffinity()
+            }
         }
         dialog.show()
     }

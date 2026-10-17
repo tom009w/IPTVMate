@@ -78,6 +78,7 @@ class PlayerActivity : AppCompatActivity() {
 
             val settings = repository.loadAppSettings()
             repository.saveAppSettings(settings.copy(lastWatchedStreamUrl = channel!!.streamUrl))
+            repository.addRecentChannel(channel!!)
         } else {
             Log.e(TAG, "No channel specified in intent extra")
             tvError.text = "No channel specified"
@@ -184,6 +185,7 @@ class PlayerActivity : AppCompatActivity() {
             val repository = PlaylistRepository(applicationContext)
             val settings = repository.loadAppSettings()
             repository.saveAppSettings(settings.copy(lastWatchedStreamUrl = selectedChannel.streamUrl))
+            repository.addRecentChannel(selectedChannel)
 
             playerView.requestFocus()
         }
@@ -239,6 +241,7 @@ class PlayerActivity : AppCompatActivity() {
             val repository = PlaylistRepository(applicationContext)
             val settings = repository.loadAppSettings()
             repository.saveAppSettings(settings.copy(lastWatchedStreamUrl = ch.streamUrl))
+            repository.addRecentChannel(ch)
 
             if (layoutEpgPanel.visibility == View.VISIBLE) {
                 openEpgPanel()

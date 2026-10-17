@@ -1,7 +1,7 @@
 package com.example.iptvmate
 
 object GroupExtractor {
-    fun extractGroups(channels: List<Channel>, customOrder: List<String> = emptyList(), hiddenCategories: List<String> = emptyList()): List<String> {
+    fun extractGroups(channels: List<Channel>, customOrder: List<String> = emptyList(), hiddenCategories: List<String> = emptyList(), recentChannels: List<Channel> = emptyList()): List<String> {
         val groups = mutableSetOf<String>()
         for (channel in channels) {
             val title = channel.groupTitle?.trim()
@@ -12,28 +12,35 @@ object GroupExtractor {
             }
         }
 
-        groups.removeAll(hiddenCategories.toSet())
+        val hasFavorites = channels.any { it.isFavorite }
+        val hasRecent = recentChannels.isNotEmpty()
 
-        val orderedGroups = mutableListOf<String>()
+        val allAvailable = mutableSetOf<String>()
+        allAvailable.addAll(groups)
+        if (hasFavorites) allAvailable.add("Favorites")
+        if (hasRecent) allAvailable.add("Recent Channels")
+
+        allAvailable.removeAll(hiddenCategories.toSet())
+
+        val finalOrdered = mutableListOf<String>()
         for (cat in customOrder) {
-            if (groups.contains(cat)) {
-                orderedGroups.add(cat)
-                groups.remove(cat)
+            if (allAvailable.contains(cat)) {
+                finalOrdered.add(cat)
+                allAvailable.remove(cat)
             }
         }
-        orderedGroups.addAll(groups.sorted())
+        finalOrdered.addAll(allAvailable.sorted())
 
-        val hasFavorites = channels.any { it.isFavorite }
-        return if (hasFavorites) {
-            listOf("All Channels", "Favorites") + orderedGroups
-        } else {
-            listOf("All Channels") + orderedGroups
-        }
+        return listOf("All Channels") + finalOrdered
     }
 
-    fun filterChannels(channels: List<Channel>, selectedGroup: String): List<Channel> {
+    fun filterChannels(channels: List<Channel>, selectedGroup: String, recentChannels: List<Channel> = emptyList()): List<Channel> {
         if (selectedGroup == "All Channels") return channels
         if (selectedGroup == "Favorites") return channels.filter { it.isFavorite }
+        if (selectedGroup == "Recent Channels") {
+            val channelMap = channels.associateBy { it.streamUrl }
+            return recentChannels.mapNotNull { channelMap[it.streamUrl] }
+        }
         return channels.filter {
             val title = it.groupTitle?.trim().let { t -> if (t.isNullOrBlank()) "Uncategorized" else t }
             title == selectedGroup

@@ -66,6 +66,10 @@
             android:exported="false"
             android:screenOrientation="landscape" />
         <activity
+            android:name=".JioOptionsActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity
             android:name=".EpgActivity"
             android:exported="false"
             android:screenOrientation="landscape" />

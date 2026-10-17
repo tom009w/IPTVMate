@@ -26,6 +26,20 @@
     <string name="search_hint">Type channel name to search...</string>
     <string name="additional_settings_title">Additional Settings</string>
     <string name="additional_settings_button">Additional Settings</string>
+    <string name="jio_options_title">JioTV Go Server Options</string>
+    <string name="jio_category_mode">Category Mode</string>
+    <string name="jio_mode_default">Default (Standard)</string>
+    <string name="jio_mode_split">Split Categories (?c=split)</string>
+    <string name="jio_mode_language">Group by Language Only (?c=language)</string>
+    <string name="jio_sub_filter">Subscription Filter</string>
+    <string name="jio_sub_all">Show All Channels (Default)</string>
+    <string name="jio_sub_hide">Hide Subscription Channels (?sub=hide)</string>
+    <string name="jio_sub_only">Subscription Only (?sub=only)</string>
+    <string name="jio_high_quality">High Quality (?q=high)</string>
+    <string name="jio_languages_title">Language Filter</string>
+    <string name="jio_languages_subtitle">Select specific languages to include (leave all unchecked for all languages):</string>
+    <string name="jio_apply_button">Apply &amp; Reload Playlist</string>
+    <string name="jio_options_button">JioTV Go Server Options</string>
     <string name="manage_playlists">Manage Playlists</string>
     <string name="save_order">Save Order</string>
     <string name="move_up">Up</string>

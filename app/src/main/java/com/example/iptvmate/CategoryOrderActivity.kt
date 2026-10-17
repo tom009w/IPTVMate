@@ -29,11 +29,11 @@ class CategoryOrderActivity : AppCompatActivity() {
         rvCategoryOrder.setItemViewCacheSize(20)
 
         val channels = repository.loadCachedChannels()
+        val recent = repository.loadRecentChannels()
         val config = repository.loadCategoryConfig()
         hiddenCategories.addAll(config.hidden)
 
-        // Extract all groups including hidden ones so user can unhide them
-        val allExtracted = GroupExtractor.extractGroups(channels, config.order, emptyList())
+        val allExtracted = GroupExtractor.extractGroups(channels, config.order, emptyList(), recent)
         categoryList.addAll(allExtracted.filter { it != "All Channels" })
 
         adapter = CategoryOrderAdapter(

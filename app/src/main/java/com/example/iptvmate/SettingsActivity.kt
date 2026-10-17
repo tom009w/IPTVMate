@@ -7,6 +7,7 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class SettingsActivity : AppCompatActivity() {
@@ -16,7 +17,6 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var btnManagePlaylists: Button
     private lateinit var btnRearrangeChannels: Button
     private lateinit var btnRearrangeCategories: Button
-    private lateinit var btnAdditionalSettings: Button
     private lateinit var switchAutoPlayLastChannel: androidx.appcompat.widget.SwitchCompat
     private lateinit var btnSaveSettings: Button
     private lateinit var repository: PlaylistRepository
@@ -30,7 +30,6 @@ class SettingsActivity : AppCompatActivity() {
         btnManagePlaylists = findViewById(R.id.btnManagePlaylists)
         btnRearrangeChannels = findViewById(R.id.btnRearrangeChannels)
         btnRearrangeCategories = findViewById(R.id.btnRearrangeCategories)
-        btnAdditionalSettings = findViewById(R.id.btnAdditionalSettings)
         switchAutoPlayLastChannel = findViewById(R.id.switchAutoPlayLastChannel)
         btnSaveSettings = findViewById(R.id.btnSaveSettings)
         repository = PlaylistRepository(applicationContext)
@@ -38,12 +37,16 @@ class SettingsActivity : AppCompatActivity() {
         val appSettings = repository.loadAppSettings()
         switchAutoPlayLastChannel.isChecked = appSettings.autoPlayLastChannel
 
-        if (!appSettings.playlistUrl.isNullOrBlank()) {
-            etSettingsPlaylistUrl.setText(appSettings.playlistUrl)
-            etSettingsPlaylistUrl.setSelection(appSettings.playlistUrl.length)
-        }
-        if (!appSettings.epgUrl.isNullOrBlank()) {
-            etSettingsEpgUrl.setText(appSettings.epgUrl)
+        lifecycleScope.launch {
+            val currentUrl = repository.playlistUrlFlow.first()
+            if (!currentUrl.isNullOrBlank()) {
+                etSettingsPlaylistUrl.setText(currentUrl)
+                etSettingsPlaylistUrl.setSelection(currentUrl.length)
+            }
+            val currentEpgUrl = repository.epgUrlFlow.first()
+            if (!currentEpgUrl.isNullOrBlank()) {
+                etSettingsEpgUrl.setText(currentEpgUrl)
+            }
         }
 
         btnManagePlaylists.setOnClickListener {
@@ -58,10 +61,6 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, CategoryOrderActivity::class.java))
         }
 
-        btnAdditionalSettings.setOnClickListener {
-            startActivity(Intent(this, AdditionalSettingsActivity::class.java))
-        }
-
         val layoutAutoPlayRow = findViewById<android.view.View>(R.id.layoutAutoPlayRow)
         layoutAutoPlayRow.setOnClickListener {
             switchAutoPlayLastChannel.isChecked = !switchAutoPlayLastChannel.isChecked
@@ -74,11 +73,7 @@ class SettingsActivity : AppCompatActivity() {
                 repository.savePlaylistUrl(url)
                 repository.saveEpgUrl(epgUrl)
                 val settings = repository.loadAppSettings()
-                repository.saveAppSettings(settings.copy(
-                    playlistUrl = url,
-                    epgUrl = epgUrl,
-                    autoPlayLastChannel = switchAutoPlayLastChannel.isChecked
-                ))
+                repository.saveAppSettings(settings.copy(autoPlayLastChannel = switchAutoPlayLastChannel.isChecked))
                 Toast.makeText(this@SettingsActivity, "Settings saved", Toast.LENGTH_SHORT).show()
                 finish()
             }

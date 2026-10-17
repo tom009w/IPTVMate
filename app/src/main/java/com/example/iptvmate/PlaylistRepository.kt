@@ -193,6 +193,38 @@ class PlaylistRepository(private val context: Context) {
         }
     }
 
+    private val recentCacheFile = File(context.filesDir, "recent_channels_cache.json")
+
+    fun addRecentChannel(channel: Channel) {
+        try {
+            val list = loadRecentChannels().toMutableList()
+            list.removeAll { it.streamUrl == channel.streamUrl }
+            list.add(0, channel)
+            if (list.size > 20) {
+                list.removeAt(list.size - 1)
+            }
+            val json = gson.toJson(list)
+            FileWriter(recentCacheFile).use { writer ->
+                writer.write(json)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun loadRecentChannels(): List<Channel> {
+        if (!recentCacheFile.exists()) return emptyList()
+        return try {
+            FileReader(recentCacheFile).use { reader ->
+                val type = object : TypeToken<List<Channel>>() {}.type
+                gson.fromJson<List<Channel>>(reader, type) ?: emptyList()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
     private val categoryOrderCacheFile = File(context.filesDir, "category_order_cache.json")
 
     data class CategoryConfig(
@@ -263,7 +295,11 @@ class PlaylistRepository(private val context: Context) {
         val stalkerPortalUrl: String? = null,
         val stalkerMacAddress: String? = null,
         val stalkerSerial: String? = null,
-        val stalkerDeviceId: String? = null
+        val stalkerDeviceId: String? = null,
+        val jioCategoryMode: String? = null,
+        val jioLanguages: List<String> = emptyList(),
+        val jioSubFilter: String? = null,
+        val jioQuality: String? = null
     )
 
     fun saveAppSettings(settings: AppSettings) {
