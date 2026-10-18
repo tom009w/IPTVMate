@@ -14,11 +14,17 @@ import java.util.Date
 import java.util.Locale
 
 class ChannelAdapter(
-    private val channels: List<Channel>,
-    private val epgPrograms: Map<Int, Pair<EpgProgram?, EpgProgram?>> = emptyMap(),
+    private var channels: List<Channel>,
+    private var epgPrograms: Map<Int, Pair<EpgProgram?, EpgProgram?>> = emptyMap(),
     private val showChannelNumber: Boolean = true,
     private val onChannelClick: (Channel) -> Unit
 ) : RecyclerView.Adapter<ChannelAdapter.ChannelViewHolder>() {
+
+    fun updateData(newChannels: List<Channel>, newEpgPrograms: Map<Int, Pair<EpgProgram?, EpgProgram?>>) {
+        this.channels = newChannels
+        this.epgPrograms = newEpgPrograms
+        notifyDataSetChanged()
+    }
 
     class ChannelViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvChannelNumber: TextView = itemView.findViewById(R.id.tvChannelNumber)

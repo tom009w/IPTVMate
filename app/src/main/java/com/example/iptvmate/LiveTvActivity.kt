@@ -269,11 +269,16 @@ class LiveTvActivity : AppCompatActivity() {
 
     private fun updateChannelList() {
         val filtered = GroupExtractor.filterChannels(allChannels, selectedGroup)
-        rvChannels.adapter = ChannelAdapter(filtered, currentEpgPrograms) { channel ->
-            val intent = Intent(this, PlayerActivity::class.java).apply {
-                putExtra(PlayerActivity.EXTRA_CHANNEL, channel)
+        val adapter = rvChannels.adapter as? ChannelAdapter
+        if (adapter != null) {
+            adapter.updateData(filtered, currentEpgPrograms)
+        } else {
+            rvChannels.adapter = ChannelAdapter(filtered, currentEpgPrograms) { channel ->
+                val intent = Intent(this, PlayerActivity::class.java).apply {
+                    putExtra(PlayerActivity.EXTRA_CHANNEL, channel)
+                }
+                startActivity(intent)
             }
-            startActivity(intent)
         }
     }
 

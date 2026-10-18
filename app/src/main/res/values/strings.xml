@@ -20,6 +20,8 @@
     <string name="rearrange_channels">Rearrange Channels</string>
     <string name="rearrange_categories">Rearrange Categories</string>
     <string name="auto_play_last_channel">Automatically start last channel</string>
+    <string name="auto_play_last_channel_on">Auto-play Last Channel: ON</string>
+    <string name="auto_play_last_channel_off">Auto-play Last Channel: OFF</string>
     <string name="category_visible">Visible</string>
     <string name="favorite_toggle">Favorite Toggle</string>
     <string name="search_channels">Channel Search</string>

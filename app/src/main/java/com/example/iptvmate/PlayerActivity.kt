@@ -318,8 +318,8 @@ class PlayerActivity : AppCompatActivity() {
         val dataSourceFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(Util.getUserAgent(this, "IPTVMate"))
             .setAllowCrossProtocolRedirects(true)
-            .setConnectTimeoutMs(15000)
-            .setReadTimeoutMs(15000)
+            .setConnectTimeoutMs(10000)
+            .setReadTimeoutMs(10000)
 
         if (!ch.licenseHeaders.isNullOrEmpty()) {
             dataSourceFactory.setDefaultRequestProperties(ch.licenseHeaders)
@@ -331,7 +331,8 @@ class PlayerActivity : AppCompatActivity() {
         val mediaItem = buildMediaItem(ch)
 
         val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
-            .setBufferDurationsMs(1000, 30000, 500, 1000)
+            .setBufferDurationsMs(800, 20000, 400, 800)
+            .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
         val trackSelector = DefaultTrackSelector(this).apply {
