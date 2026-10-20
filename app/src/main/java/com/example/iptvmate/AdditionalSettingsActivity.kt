@@ -1,5 +1,7 @@
 package com.example.iptvmate
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
@@ -45,6 +47,16 @@ class AdditionalSettingsActivity : AppCompatActivity() {
         etStalkerSerial = findViewById(R.id.etStalkerSerial)
         etStalkerDeviceId = findViewById(R.id.etStalkerDeviceId)
         btnSaveStalker = findViewById(R.id.btnSaveStalker)
+
+        val tvWebsiteLink = findViewById<android.widget.TextView>(R.id.tvWebsiteLink)
+        tvWebsiteLink.setOnClickListener {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://iptvmate.rf.gd/"))
+                startActivity(intent)
+            } catch (_: Exception) {
+                Toast.makeText(this, "Unable to open web browser", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         repository = PlaylistRepository(applicationContext)
 

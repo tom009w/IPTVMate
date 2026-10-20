@@ -14,11 +14,27 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="32dp"
+            android:layout_marginBottom="12dp"
             android:text="@string/additional_settings_title"
             android:textColor="@color/cinema_text_primary"
             android:textSize="32sp"
             android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvWebsiteLink"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="32dp"
+            android:background="@drawable/tv_focusable_background"
+            android:clickable="true"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:text="https://iptvmate.rf.gd/"
+            android:textColor="@color/cinema_primary"
+            android:textSize="18sp"
+            android:textStyle="italic" />
 
         <TextView
             android:layout_width="wrap_content"
