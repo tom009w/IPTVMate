@@ -76,4 +76,5 @@
     <string name="stalker_serial_hint">Serial Number (Optional)</string>
     <string name="stalker_device_id_hint">Device ID (Optional)</string>
     <string name="stalker_connect_button">Save &amp; Connect Stalker Portal</string>
+    <string name="press_back_again_to_exit">Press back again to exit</string>
 </resources>

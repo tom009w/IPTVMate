@@ -48,6 +48,7 @@ class LiveTvActivity : AppCompatActivity() {
     private var lastBackPressTime = 0L
     private var hasPromptedForPlaylist = false
     private var hasAutoPlayedLastChannel = false
+    private var playlistDialog: AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -109,7 +110,7 @@ class LiveTvActivity : AppCompatActivity() {
                         finishAffinity()
                     } else {
                         lastBackPressTime = currentTime
-                        Toast.makeText(this@LiveTvActivity, "Press back again to exit", Toast.LENGTH_SHORT).show()
+                        showCustomExitToast()
                     }
                 }
             }
@@ -132,6 +133,16 @@ class LiveTvActivity : AppCompatActivity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
+                KeyEvent.KEYCODE_DPAD_DOWN -> {
+                    if (layoutMainMenu.visibility == View.VISIBLE && currentFocus == menuExit) {
+                        return true
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_UP -> {
+                    if (layoutMainMenu.visibility == View.VISIBLE && currentFocus == menuSearch) {
+                        return true
+                    }
+                }
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
                     if (layoutMainMenu.visibility == View.VISIBLE) {
                         return true
@@ -203,10 +214,11 @@ class LiveTvActivity : AppCompatActivity() {
 
                 val repo = PlaylistRepository(applicationContext)
                 val config = repo.loadCategoryConfig()
-                val groups = GroupExtractor.extractGroups(allChannels, config.order, config.hidden)
+                val recent = repo.loadRecentChannels()
+                val groups = GroupExtractor.extractGroups(allChannels, config.order, config.hidden, recent)
                 rvGroups.adapter = GroupAdapter(groups) { group ->
                     selectedGroup = group
-                    val filtered = GroupExtractor.filterChannels(allChannels, selectedGroup)
+                    val filtered = GroupExtractor.filterChannels(allChannels, selectedGroup, recent)
                     if (filtered.isEmpty()) {
                         Toast.makeText(this, "No channels found in $group", Toast.LENGTH_SHORT).show()
                     } else {
@@ -245,11 +257,12 @@ class LiveTvActivity : AppCompatActivity() {
                     rvChannels.visibility = View.VISIBLE
                     allChannels = channelsToShow
                     val repo = PlaylistRepository(applicationContext)
-                val config = repo.loadCategoryConfig()
-                val groups = GroupExtractor.extractGroups(allChannels, config.order, config.hidden)
+                    val config = repo.loadCategoryConfig()
+                    val recent = repo.loadRecentChannels()
+                    val groups = GroupExtractor.extractGroups(allChannels, config.order, config.hidden, recent)
                     rvGroups.adapter = GroupAdapter(groups) { group ->
                         selectedGroup = group
-                        val filtered = GroupExtractor.filterChannels(allChannels, selectedGroup)
+                        val filtered = GroupExtractor.filterChannels(allChannels, selectedGroup, recent)
                         if (filtered.isEmpty()) {
                             Toast.makeText(this, "No channels found in $group", Toast.LENGTH_SHORT).show()
                         } else {
@@ -268,7 +281,9 @@ class LiveTvActivity : AppCompatActivity() {
     }
 
     private fun updateChannelList() {
-        val filtered = GroupExtractor.filterChannels(allChannels, selectedGroup)
+        val repo = PlaylistRepository(applicationContext)
+        val recent = repo.loadRecentChannels()
+        val filtered = GroupExtractor.filterChannels(allChannels, selectedGroup, recent)
         val adapter = rvChannels.adapter as? ChannelAdapter
         if (adapter != null) {
             adapter.updateData(filtered, currentEpgPrograms)
@@ -283,6 +298,9 @@ class LiveTvActivity : AppCompatActivity() {
     }
 
     private fun showMandatoryPlaylistDialog(existingUrl: String?) {
+        if (isFinishing || isDestroyed) return
+        if (playlistDialog?.isShowing == true) return
+
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_playlist_url, null)
         val etUrl = dialogView.findViewById<EditText>(R.id.etPlaylistUrl)
         if (!existingUrl.isNullOrBlank()) {
@@ -298,6 +316,8 @@ class LiveTvActivity : AppCompatActivity() {
             .setNeutralButton("Additional Settings", null)
             .setNegativeButton("Exit", null)
             .create()
+
+        playlistDialog = dialog
 
         dialog.setOnShowListener {
             dialog.window?.decorView?.setBackgroundColor(android.graphics.Color.parseColor("#1E1E2E"))
@@ -326,5 +346,37 @@ class LiveTvActivity : AppCompatActivity() {
             }
         }
         dialog.show()
+    }
+
+    private var exitToastJob: kotlinx.coroutines.Job? = null
+
+    private fun showCustomExitToast() {
+        val layoutExitToast = findViewById<View>(R.id.layoutExitToast) ?: return
+        exitToastJob?.cancel()
+
+        layoutExitToast.alpha = 0f
+        layoutExitToast.visibility = View.VISIBLE
+        layoutExitToast.animate()
+            .alpha(1f)
+            .setDuration(200)
+            .start()
+
+        exitToastJob = lifecycleScope.launch {
+            kotlinx.coroutines.delay(2000)
+            layoutExitToast.animate()
+                .alpha(0f)
+                .setDuration(300)
+                .withEndAction {
+                    layoutExitToast.visibility = View.GONE
+                }
+                .start()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        exitToastJob?.cancel()
+        playlistDialog?.dismiss()
+        playlistDialog = null
     }
 }

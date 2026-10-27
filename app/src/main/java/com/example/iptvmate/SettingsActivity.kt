@@ -16,6 +16,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var etSettingsEpgUrl: EditText
     private lateinit var btnManagePlaylists: Button
     private lateinit var btnRearrangeChannels: Button
+
     private lateinit var btnRearrangeCategories: Button
     private lateinit var btnAdditionalSettings: Button
     private lateinit var btnAutoPlayToggle: Button

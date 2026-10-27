@@ -7,6 +7,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -14,6 +15,7 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.ParserException
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
@@ -25,6 +27,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.net.URL
 
+@OptIn(UnstableApi::class)
 class PlayerActivity : AppCompatActivity() {
 
     private lateinit var playerView: PlayerView
@@ -45,6 +48,7 @@ class PlayerActivity : AppCompatActivity() {
     private var channel: Channel? = null
     private var allChannels: List<Channel> = emptyList()
     private var currentChannelIndex = 0
+    private var isRetryingLocal = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -252,17 +256,37 @@ class PlayerActivity : AppCompatActivity() {
     private fun buildMediaItem(ch: Channel): MediaItem {
         val mediaItemBuilder = MediaItem.Builder().setUri(ch.streamUrl)
 
-        if (ch.streamUrl.contains("/mpd/", ignoreCase = true) || ch.streamUrl.endsWith(".mpd", ignoreCase = true)) {
-            mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_MPD)
-        } else if (ch.streamUrl.contains("/m3u8/", ignoreCase = true) || ch.streamUrl.endsWith(".m3u8", ignoreCase = true)) {
-            mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_M3U8)
+        val type = ch.manifestType?.lowercase()?.trim()
+        val urlLower = ch.streamUrl.lowercase()
+
+        when {
+            type == "mpd" || urlLower.contains("/mpd/") || urlLower.endsWith(".mpd") || urlLower.contains(".mpd?") -> {
+                mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_MPD)
+            }
+            type == "hls" || type == "m3u8" || urlLower.contains("/m3u8/") || urlLower.endsWith(".m3u8") || urlLower.contains(".m3u8?") -> {
+                mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_M3U8)
+            }
+            type == "ism" || type == "ss" || urlLower.contains(".ism") || urlLower.contains("/manifest") -> {
+                mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_SS)
+            }
+            type == "ts" || urlLower.endsWith(".ts") || urlLower.contains(".ts?") -> {
+                mediaItemBuilder.setMimeType(MimeTypes.VIDEO_MP2T)
+            }
         }
 
         if (!ch.licenseUrl.isNullOrBlank()) {
-            val schemeUuid = when (ch.drmScheme?.lowercase()) {
+            val schemeUuid = when (ch.drmScheme?.lowercase()?.trim()) {
                 "widevine", "com.widevine.alpha" -> C.WIDEVINE_UUID
                 "playready", "com.microsoft.playready" -> C.PLAYREADY_UUID
-                else -> C.WIDEVINE_UUID
+                "clearkey", "com.clearkey", "org.w3.clearkey", "cenc" -> C.CLEARKEY_UUID
+                else -> {
+                    val url = ch.licenseUrl.lowercase()
+                    when {
+                        url.contains("clearkey") || isDirectKeyString(ch.licenseUrl) -> C.CLEARKEY_UUID
+                        url.contains("playready") -> C.PLAYREADY_UUID
+                        else -> C.WIDEVINE_UUID
+                    }
+                }
             }
             val drmConfigBuilder = MediaItem.DrmConfiguration.Builder(schemeUuid)
                 .setLicenseUri(ch.licenseUrl)
@@ -274,13 +298,40 @@ class PlayerActivity : AppCompatActivity() {
         return mediaItemBuilder.build()
     }
 
-    private fun playChannel(ch: Channel) {
+    private fun playChannel(ch: Channel, isFallbackRetry: Boolean = false) {
+        if (!isFallbackRetry) {
+            isRetryingLocal = false
+        }
         val mediaItem = buildMediaItem(ch)
         exoPlayer?.apply {
             stop()
             setMediaItem(mediaItem)
             prepare()
             playWhenReady = true
+        }
+    }
+
+    private fun convertToLocalUrl(urlStr: String): String {
+        return try {
+            val uri = Uri.parse(urlStr)
+            val path = uri.path ?: ""
+            when {
+                path.contains("/mpd/") -> {
+                    val id = path.substringAfter("/mpd/").substringBefore("/")
+                    "http://localhost:5350/live/mpd/$id"
+                }
+                path.contains("/m3u8/") -> {
+                    val id = path.substringAfter("/m3u8/").substringBefore("/")
+                    "http://localhost:5350/live/m3u8/$id"
+                }
+                path.contains("/key/") || path.contains("/clearkey/") -> {
+                    val id = path.substringAfterLast("/")
+                    "http://localhost:5350/live/key/$id"
+                }
+                else -> urlStr
+            }
+        } catch (e: Exception) {
+            urlStr
         }
     }
 
@@ -308,15 +359,140 @@ class PlayerActivity : AppCompatActivity() {
         Log.d(TAG, "=== Channel Playback Diagnostics ===")
         Log.d(TAG, "Channel ID: ${ch.id}, Name: ${ch.name}")
         Log.d(TAG, "Stream URL (redacted): $redactedStreamUrl")
-        Log.d(TAG, "Is Stream URL Relative?: $isRelative")
+        Log.d(TAG, "Is Stream URL Relative?: false")
         Log.d(TAG, "DRM Enabled?: $hasDrm")
         Log.d(TAG, "DRM Scheme: ${ch.drmScheme ?: "none"}")
         Log.d(TAG, "License URL Host: $licenseHost (Full license URL redacted)")
     }
 
+    private fun isDirectKeyString(licenseStr: String): Boolean {
+        val trimmed = licenseStr.trim()
+        if (trimmed.startsWith("{") || trimmed.contains("\"keys\"")) return true
+        if (trimmed.contains(":") && !trimmed.startsWith("http://", ignoreCase = true) && !trimmed.startsWith("https://", ignoreCase = true)) {
+            val parts = trimmed.split(":", limit = 2)
+            val p0 = parts[0].trim().replace("-", "")
+            val p1 = parts[1].trim().replace("-", "")
+            if (p0.length == 32 || p1.length == 32 || (p0.length in 20..24 && p1.length in 20..24)) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun formatClearKeyJson(jsonOrKidKeyStr: String): String {
+        val trimmed = jsonOrKidKeyStr.trim()
+        if (trimmed.startsWith("{") || trimmed.contains("\"keys\"")) {
+            return try {
+                val gson = com.google.gson.Gson()
+                val type = object : com.google.gson.reflect.TypeToken<Map<String, Any>>() {}.type
+                val map: MutableMap<String, Any>? = gson.fromJson(trimmed, type)
+                if (map != null && map.containsKey("keys")) {
+                    val keysList = map["keys"] as? List<*>
+                    if (keysList != null) {
+                        val formattedKeys = keysList.mapNotNull { keyObj ->
+                            val keyMap = keyObj as? Map<*, *> ?: return@mapNotNull null
+                            val newObj = keyMap.mapKeys { it.key.toString() }.mapValues { it.value }.toMutableMap()
+                            val kid = newObj["kid"]?.toString()
+                            val k = newObj["k"]?.toString()
+                            if (!kid.isNullOrBlank()) newObj["kid"] = formatBase64UrlKey(kid)
+                            if (!k.isNullOrBlank()) newObj["k"] = formatBase64UrlKey(k)
+                            if (!newObj.containsKey("kty")) newObj["kty"] = "oct"
+                            newObj
+                        }
+                        // Android 9 ClearKey plugin expects ONLY "keys" at top level
+                        val cleanMap = mapOf("keys" to formattedKeys)
+                        gson.toJson(cleanMap)
+                    } else {
+                        trimmed
+                    }
+                } else {
+                    trimmed
+                }
+            } catch (e: Exception) {
+                trimmed
+            }
+        }
+
+        val keysList = mutableListOf<Map<String, String>>()
+        val pairs = trimmed.split(Regex("[,;\\s]+"))
+        for (pair in pairs) {
+            val p = pair.trim()
+            if (p.contains(":")) {
+                val colonIdx = p.indexOf(':')
+                val rawKid = p.substring(0, colonIdx).trim()
+                val rawKey = p.substring(colonIdx + 1).trim()
+                if (rawKid.isNotEmpty() && rawKey.isNotEmpty()) {
+                    val formattedKid = formatBase64UrlKey(rawKid)
+                    val formattedKey = formatBase64UrlKey(rawKey)
+                    keysList.add(
+                        mapOf(
+                            "kty" to "oct",
+                            "kid" to formattedKid,
+                            "k" to formattedKey
+                        )
+                    )
+                }
+            }
+        }
+
+        if (keysList.isNotEmpty()) {
+            val resultMap = mapOf("keys" to keysList)
+            return com.google.gson.Gson().toJson(resultMap)
+        }
+
+        return trimmed
+    }
+
+    private fun formatBase64UrlKey(str: String): String {
+        val trimmed = str.trim().removeSurrounding("\"")
+        val cleanHex = trimmed.replace("-", "").replace(":", "").replace(" ", "")
+        if (cleanHex.length == 32 && cleanHex.all { it in "0123456789abcdefABCDEF" }) {
+            return hexToBase64Url(cleanHex)
+        }
+
+        try {
+            val base64UrlStandard = trimmed.replace("+", "-").replace("/", "_").removeSuffix("=").removeSuffix("=")
+            val bytes = android.util.Base64.decode(base64UrlStandard, android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING)
+            if (bytes.size == 16) {
+                return android.util.Base64.encodeToString(
+                    bytes,
+                    android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP
+                ).trim()
+            }
+            if (bytes.size == 32) {
+                val hexStr = String(bytes, Charsets.UTF_8).trim()
+                if (hexStr.length == 32 && hexStr.all { it in "0123456789abcdefABCDEF" }) {
+                    return hexToBase64Url(hexStr)
+                }
+            }
+        } catch (_: Exception) {}
+
+        return trimmed.replace("+", "-").replace("/", "_").removeSuffix("=").removeSuffix("=")
+    }
+
+    private fun hexToBase64Url(hex32: String): String {
+        return try {
+            val cleanHex = hex32.replace("-", "").replace(":", "").trim()
+            if (cleanHex.length != 32) return hex32
+            val bytes = ByteArray(16)
+            for (i in 0 until 16) {
+                bytes[i] = cleanHex.substring(i * 2, i * 2 + 2).toInt(16).toByte()
+            }
+            android.util.Base64.encodeToString(
+                bytes,
+                android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP
+            ).trim()
+        } catch (e: Exception) {
+            hex32
+        }
+    }
+
     private fun initPlayer(ch: Channel) {
+        val userAgentHeader = ch.licenseHeaders?.entries?.firstOrNull { it.key.equals("User-Agent", ignoreCase = true) }?.value
+        val userAgent = if (!userAgentHeader.isNullOrBlank()) userAgentHeader else Util.getUserAgent(this, "IPTVMate")
+
         val dataSourceFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent(Util.getUserAgent(this, "IPTVMate"))
+            .setUserAgent(userAgent)
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(10000)
             .setReadTimeoutMs(10000)
@@ -327,6 +503,63 @@ class PlayerActivity : AppCompatActivity() {
 
         val mediaSourceFactory = DefaultMediaSourceFactory(this)
             .setDataSourceFactory(dataSourceFactory)
+            .setDrmSessionManagerProvider { mediaItem ->
+                val drmConfig = mediaItem.localConfiguration?.drmConfiguration
+                if (drmConfig != null) {
+                    val licenseUriStr = drmConfig.licenseUri?.toString() ?: ""
+                    val isDirectKey = isDirectKeyString(licenseUriStr)
+
+                    val httpCallback = if (!isDirectKey && licenseUriStr.startsWith("http", ignoreCase = true)) {
+                        androidx.media3.exoplayer.drm.HttpMediaDrmCallback(licenseUriStr, dataSourceFactory)
+                    } else {
+                        null
+                    }
+
+                    val customDrmCallback = object : androidx.media3.exoplayer.drm.MediaDrmCallback {
+                        override fun executeProvisionRequest(
+                            uuid: java.util.UUID,
+                            request: androidx.media3.exoplayer.drm.ExoMediaDrm.ProvisionRequest
+                        ): ByteArray {
+                            return httpCallback?.executeProvisionRequest(uuid, request) ?: ByteArray(0)
+                        }
+
+                        override fun executeKeyRequest(
+                            uuid: java.util.UUID,
+                            request: androidx.media3.exoplayer.drm.ExoMediaDrm.KeyRequest
+                        ): ByteArray {
+                            val rawResponseBytes = if (isDirectKey) {
+                                licenseUriStr.toByteArray(Charsets.UTF_8)
+                            } else if (httpCallback != null) {
+                                httpCallback.executeKeyRequest(uuid, request)
+                            } else {
+                                licenseUriStr.toByteArray(Charsets.UTF_8)
+                            }
+
+                            if (drmConfig.scheme == C.CLEARKEY_UUID) {
+                                return try {
+                                    val responseString = String(rawResponseBytes, Charsets.UTF_8)
+                                    if (responseString.contains("{") || responseString.contains(":") || isDirectKey) {
+                                        val sanitizedJson = formatClearKeyJson(responseString)
+                                        Log.d(TAG, "Sanitized ClearKey DRM payload: $sanitizedJson")
+                                        sanitizedJson.toByteArray(Charsets.UTF_8)
+                                    } else {
+                                        rawResponseBytes
+                                    }
+                                } catch (e: Exception) {
+                                    rawResponseBytes
+                                }
+                            }
+
+                            return rawResponseBytes
+                        }
+                    }
+
+                    androidx.media3.exoplayer.drm.DefaultDrmSessionManager.Builder()
+                        .build(customDrmCallback)
+                } else {
+                    androidx.media3.exoplayer.drm.DrmSessionManager.DRM_UNSUPPORTED
+                }
+            }
 
         val mediaItem = buildMediaItem(ch)
 
@@ -344,7 +577,13 @@ class PlayerActivity : AppCompatActivity() {
             )
         }
 
-        exoPlayer = ExoPlayer.Builder(this)
+        val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(this)
+            .setMediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunneling ->
+                val nonSecureDecoders = androidx.media3.exoplayer.mediacodec.MediaCodecSelector.DEFAULT.getDecoderInfos(mimeType, false, requiresTunneling)
+                if (nonSecureDecoders.isNotEmpty()) nonSecureDecoders else androidx.media3.exoplayer.mediacodec.MediaCodecSelector.DEFAULT.getDecoderInfos(mimeType, requiresSecureDecoder, requiresTunneling)
+            }
+
+        exoPlayer = ExoPlayer.Builder(this, renderersFactory)
             .setLoadControl(loadControl)
             .setTrackSelector(trackSelector)
             .setMediaSourceFactory(mediaSourceFactory)
@@ -373,6 +612,23 @@ class PlayerActivity : AppCompatActivity() {
                     }
 
                     override fun onPlayerError(error: PlaybackException) {
+                        val currentCh = channel
+                        if (!isRetryingLocal && currentCh != null) {
+                            val localStreamUrl = convertToLocalUrl(currentCh.streamUrl)
+                            val localLicenseUrl = currentCh.licenseUrl?.let { convertToLocalUrl(it) }
+                            if (localStreamUrl != currentCh.streamUrl) {
+                                isRetryingLocal = true
+                                Log.d(TAG, "External playback failed. Retrying with local server: $localStreamUrl")
+                                val fallbackCh = currentCh.copy(
+                                    streamUrl = localStreamUrl,
+                                    licenseUrl = localLicenseUrl
+                                )
+                                channel = fallbackCh
+                                playChannel(fallbackCh, isFallbackRetry = true)
+                                return
+                            }
+                        }
+
                         progressBar.visibility = View.GONE
 
                         val errorCode = error.errorCode

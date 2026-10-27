@@ -111,4 +111,26 @@ class M3UParserTest {
         assertEquals("Bearer secret_token", channels[0].licenseHeaders?.get("Authorization"))
         assertEquals("CustomAgent", channels[0].licenseHeaders?.get("User-Agent"))
     }
+
+    @Test
+    fun testExtHttpAndPipeParsing() {
+        val m3uContent = """
+            #EXTM3U
+            #EXTINF:-1 tvg-name="Bigboss 24/7 live-HINDI" group-title="BIGG BOSS", ENG-4K Bigboss 24/7 live-HINDI
+            #EXTVLCOPT:http-user-agent=Hotstar;in.startv.hotstar/25.02.24
+            #EXTHTTP:{"Origin":"https://www.hotstar.com","Referer":"https://www.hotstar.com/","Cookie":"hdntl=exp=1792582023~acl=%2f*~id=fcae0271"}
+            https://live09p.hotstar.com/mp2/index_6.m3u8?|cookie=hdntl=exp=1792582023~acl=%2f*~id=fcae0271&referer=https://www.hotstar.com/&origin=https://www.hotstar.com&user-agent=Hotstar;in.startv.hotstar/25.02.24
+        """.trimIndent()
+
+        val inputStream = ByteArrayInputStream(m3uContent.toByteArray(Charsets.UTF_8))
+        val channels = M3UParser.parse(inputStream)
+
+        assertEquals(1, channels.size)
+        assertEquals("ENG-4K Bigboss 24/7 live-HINDI", channels[0].name)
+        assertEquals("https://live09p.hotstar.com/mp2/index_6.m3u8", channels[0].streamUrl)
+        assertEquals("https://www.hotstar.com", channels[0].licenseHeaders?.get("Origin"))
+        assertEquals("https://www.hotstar.com/", channels[0].licenseHeaders?.get("Referer"))
+        assertEquals("hdntl=exp=1792582023~acl=%2f*~id=fcae0271", channels[0].licenseHeaders?.get("Cookie"))
+        assertEquals("Hotstar;in.startv.hotstar/25.02.24", channels[0].licenseHeaders?.get("User-Agent"))
+    }
 }

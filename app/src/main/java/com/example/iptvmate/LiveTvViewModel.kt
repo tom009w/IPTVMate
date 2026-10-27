@@ -92,15 +92,42 @@ class LiveTvViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun openUrlConnectionWithRedirects(urlStr: String, maxRedirects: Int = 5): HttpURLConnection {
+        var currentUrl = urlStr
+        var redirects = 0
+        while (redirects < maxRedirects) {
+            val url = URL(currentUrl)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                connectTimeout = 20000
+                readTimeout = 20000
+                instanceFollowRedirects = true
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                setRequestProperty("Accept", "*/*")
+            }
+
+            val status = connection.responseCode
+            if (status in 300..399) {
+                val newUrl = connection.getHeaderField("Location")
+                if (!newUrl.isNullOrBlank()) {
+                    currentUrl = if (newUrl.startsWith("http://", ignoreCase = true) || newUrl.startsWith("https://", ignoreCase = true)) {
+                        newUrl
+                    } else {
+                        URL(url, newUrl).toString()
+                    }
+                    connection.disconnect()
+                    redirects++
+                    continue
+                }
+            }
+            return connection
+        }
+        throw Exception("Too many redirects ($redirects)")
+    }
+
     private fun fetchAndParseEpg(urlStr: String, isBackground: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val url = URL(urlStr)
-                val connection = (url.openConnection() as HttpURLConnection).apply {
-                    connectTimeout = 15000
-                    readTimeout = 15000
-                    setRequestProperty("User-Agent", "IPTVMate/1.0")
-                }
+                val connection = openUrlConnectionWithRedirects(urlStr)
                 if (connection.responseCode in 200..299) {
                     epgMap = connection.inputStream.use { stream ->
                         XmltvParser.parse(stream)
@@ -129,20 +156,15 @@ class LiveTvViewModel(application: Application) : AndroidViewModel(application) 
         }
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val url = URL(urlStr)
-                val connection = (url.openConnection() as HttpURLConnection).apply {
-                    connectTimeout = 15000
-                    readTimeout = 15000
-                    setRequestProperty("User-Agent", "IPTVMate/1.0")
-                }
+                val connection = openUrlConnectionWithRedirects(urlStr)
 
                 val responseCode = connection.responseCode
                 if (responseCode !in 200..299) {
                     throw Exception("HTTP error status: $responseCode")
                 }
 
-                var channels = connection.inputStream.use { stream ->
-                    M3UParser.parse(stream, urlStr) { count ->
+                val parsedResult = connection.inputStream.use { stream ->
+                    M3UParser.parsePlaylist(stream, urlStr) { count ->
                         if (!isBackground) {
                             if (count % 10 == 1 || count < 20) {
                                 viewModelScope.launch(Dispatchers.Main) {
@@ -150,6 +172,16 @@ class LiveTvViewModel(application: Application) : AndroidViewModel(application) 
                                 }
                             }
                         }
+                    }
+                }
+                var channels = parsedResult.channels
+
+                // Auto-use embedded EPG URL if present and epgUrl is empty
+                if (!parsedResult.embeddedEpgUrl.isNullOrBlank()) {
+                    val currentEpg = repository.epgUrlFlow.first()
+                    if (currentEpg.isNullOrBlank()) {
+                        repository.saveEpgUrl(parsedResult.embeddedEpgUrl)
+                        fetchAndParseEpg(parsedResult.embeddedEpgUrl, isBackground = true)
                     }
                 }
 
@@ -164,7 +196,7 @@ class LiveTvViewModel(application: Application) : AndroidViewModel(application) 
                     val epgUrl = repository.epgUrlFlow.first()
                     if (!epgUrl.isNullOrBlank()) {
                         try {
-                            val epgConn = URL(epgUrl).openConnection() as HttpURLConnection
+                            val epgConn = openUrlConnectionWithRedirects(epgUrl)
                             if (epgConn.responseCode in 200..299) {
                                 epgMap = epgConn.inputStream.use { XmltvParser.parse(it) }
                                 EpgManager.epgMap = epgMap
@@ -207,12 +239,7 @@ class LiveTvViewModel(application: Application) : AndroidViewModel(application) 
     private fun fetchJioChannels(playlistUrl: String, m3uChannels: List<Channel>): List<Channel> {
         try {
             val apiUriStr = getChannelsApiUrl(playlistUrl) ?: return m3uChannels
-            val url = URL(apiUriStr)
-            val connection = (url.openConnection() as HttpURLConnection).apply {
-                connectTimeout = 10000
-                readTimeout = 10000
-                setRequestProperty("User-Agent", "IPTVMate/1.0")
-            }
+            val connection = openUrlConnectionWithRedirects(apiUriStr)
 
             if (connection.responseCode == 200) {
                 val json = connection.inputStream.bufferedReader().use { it.readText() }
@@ -223,8 +250,22 @@ class LiveTvViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
         } catch (e: Exception) {
-            Log.w("LiveTvViewModel", "Failed to fetch /channels API, using M3U channels without DRM: ${e.message}")
+            Log.w("LiveTvViewModel", "Failed to fetch external /channels API: ${e.message}")
         }
+
+        // Fallback to local server localhost:5350 if running on device
+        try {
+            val localConn = openUrlConnectionWithRedirects("http://localhost:5350/channels")
+            if (localConn.responseCode == 200) {
+                val json = localConn.inputStream.bufferedReader().use { it.readText() }
+                val response = Gson().fromJson(json, JioChannelsResponse::class.java)
+                if (response?.code == 200 && !response.result.isNullOrEmpty()) {
+                    Log.d("LiveTvViewModel", "Successfully fetched ${response.result.size} channels from local /channels API")
+                    return JioChannelMatcher.matchChannels(m3uChannels, response.result)
+                }
+            }
+        } catch (_: Exception) {}
+
         return m3uChannels
     }
 

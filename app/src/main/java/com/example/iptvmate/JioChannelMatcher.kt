@@ -38,9 +38,18 @@ object JioChannelMatcher {
                 if (sampleMatches.size < 3) {
                     sampleMatches.add("${channel.name} -> ID: ${matchedItem.channel_id}")
                 }
+                val keyUrl = matchedItem.key_url.trim()
+                val scheme = when {
+                    !channel.drmScheme.isNullOrBlank() -> channel.drmScheme
+                    keyUrl.contains("widevine", ignoreCase = true) -> "widevine"
+                    keyUrl.contains("playready", ignoreCase = true) -> "playready"
+                    keyUrl.contains("clearkey", ignoreCase = true) -> "clearkey"
+                    keyUrl.contains("5350") || keyUrl.contains("localhost") || keyUrl.contains("/key/") -> "clearkey"
+                    else -> "widevine"
+                }
                 channel.copy(
-                    drmScheme = "widevine",
-                    licenseUrl = matchedItem.key_url.trim()
+                    drmScheme = scheme,
+                    licenseUrl = keyUrl
                 )
             } else {
                 channel

@@ -51,7 +51,7 @@ class JioChannelMatcherTest {
 
         assertEquals(2, matched.size)
         assertEquals("http://192.168.1.128:5350/live/key/143", matched[0].licenseUrl)
-        assertEquals("widevine", matched[0].drmScheme)
+        assertEquals("clearkey", matched[0].drmScheme)
 
         assertNull(matched[1].licenseUrl)
         assertNull(matched[1].drmScheme)
