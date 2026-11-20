@@ -56,3 +56,17 @@ No license has been specified yet. Unless a license is added to this repository,
 ---
 
 **IPTV Mate** — Your playlists, your channels, your TV.
+## 💬 Support & Feedback
+
+Need help with IPTV Mate? Have you found a bug or want to suggest a feature?
+
+📩 **[Contact IPTV Mate Support on Telegram](https://t.me/IPTVmate_support_bot)**
+
+You can use the support bot to:
+- 🐛 Report bugs and playback errors
+- 📺 Report playlist or channel issues
+- 💡 Suggest new features
+- 📷 Send screenshots of errors
+- 💬 Share feedback and ask for help
+
+Please include a description of the problem and any relevant error messages to help us investigate.
