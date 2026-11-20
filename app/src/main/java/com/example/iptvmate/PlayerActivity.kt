@@ -45,6 +45,7 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var rvPlayerChannels: RecyclerView
 
     private var exoPlayer: ExoPlayer? = null
+    private var hlsMediaSourceFactory: androidx.media3.exoplayer.hls.HlsMediaSource.Factory? = null
     private var channel: Channel? = null
     private var allChannels: List<Channel> = emptyList()
     private var currentChannelIndex = 0
@@ -303,9 +304,16 @@ class PlayerActivity : AppCompatActivity() {
             isRetryingLocal = false
         }
         val mediaItem = buildMediaItem(ch)
+        val urlLower = ch.streamUrl.lowercase()
+        val isHls = urlLower.contains(".m3u8") || urlLower.contains("/m3u8/") || ch.manifestType?.lowercase() == "hls" || ch.manifestType?.lowercase() == "m3u8"
+
         exoPlayer?.apply {
-            stop()
-            setMediaItem(mediaItem)
+            if (isHls && hlsMediaSourceFactory != null) {
+                val hlsSource = hlsMediaSourceFactory!!.createMediaSource(mediaItem)
+                setMediaSource(hlsSource, /* resetPosition= */ true)
+            } else {
+                setMediaItem(mediaItem, /* resetPosition= */ true)
+            }
             prepare()
             playWhenReady = true
         }
@@ -491,21 +499,35 @@ class PlayerActivity : AppCompatActivity() {
         val userAgentHeader = ch.licenseHeaders?.entries?.firstOrNull { it.key.equals("User-Agent", ignoreCase = true) }?.value
         val userAgent = if (!userAgentHeader.isNullOrBlank()) userAgentHeader else Util.getUserAgent(this, "IPTVMate")
 
+        val reqHeaders = (ch.licenseHeaders ?: emptyMap()).toMutableMap()
+        if (!reqHeaders.containsKey("Connection")) {
+            reqHeaders["Connection"] = "keep-alive"
+        }
+        if (!reqHeaders.containsKey("Accept-Encoding")) {
+            reqHeaders["Accept-Encoding"] = "gzip, deflate"
+        }
+
+        val bandwidthMeter = androidx.media3.exoplayer.upstream.DefaultBandwidthMeter.Builder(this)
+            .setInitialBitrateEstimate(12_000_000L)
+            .build()
+
         val dataSourceFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(userAgent)
             .setAllowCrossProtocolRedirects(true)
-            .setConnectTimeoutMs(10000)
-            .setReadTimeoutMs(10000)
+            .setConnectTimeoutMs(8000)
+            .setReadTimeoutMs(15000)
+            .setDefaultRequestProperties(reqHeaders)
 
-        if (!ch.licenseHeaders.isNullOrEmpty()) {
-            dataSourceFactory.setDefaultRequestProperties(ch.licenseHeaders)
-        }
+        hlsMediaSourceFactory = androidx.media3.exoplayer.hls.HlsMediaSource.Factory(dataSourceFactory)
+            .setAllowChunklessPreparation(false)
 
         val mediaSourceFactory = DefaultMediaSourceFactory(this)
             .setDataSourceFactory(dataSourceFactory)
+            .setLiveTargetOffsetMs(3000)
             .setDrmSessionManagerProvider { mediaItem ->
                 val drmConfig = mediaItem.localConfiguration?.drmConfiguration
                 if (drmConfig != null) {
+                    val schemeUuid = drmConfig.scheme
                     val licenseUriStr = drmConfig.licenseUri?.toString() ?: ""
                     val isDirectKey = isDirectKeyString(licenseUriStr)
 
@@ -535,7 +557,7 @@ class PlayerActivity : AppCompatActivity() {
                                 licenseUriStr.toByteArray(Charsets.UTF_8)
                             }
 
-                            if (drmConfig.scheme == C.CLEARKEY_UUID) {
+                            if (schemeUuid == C.CLEARKEY_UUID) {
                                 return try {
                                     val responseString = String(rawResponseBytes, Charsets.UTF_8)
                                     if (responseString.contains("{") || responseString.contains(":") || isDirectKey) {
@@ -554,23 +576,39 @@ class PlayerActivity : AppCompatActivity() {
                         }
                     }
 
-                    androidx.media3.exoplayer.drm.DefaultDrmSessionManager.Builder()
-                        .build(customDrmCallback)
+                    val drmBuilder = androidx.media3.exoplayer.drm.DefaultDrmSessionManager.Builder()
+                    if (schemeUuid == C.WIDEVINE_UUID) {
+                        drmBuilder.setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID) { uuid ->
+                            val mediaDrm = androidx.media3.exoplayer.drm.FrameworkMediaDrm.newInstance(uuid)
+                            try {
+                                mediaDrm.setPropertyString("securityLevel", "L3")
+                            } catch (_: Exception) {}
+                            mediaDrm
+                        }
+                    }
+                    drmBuilder.build(customDrmCallback)
                 } else {
                     androidx.media3.exoplayer.drm.DrmSessionManager.DRM_UNSUPPORTED
                 }
             }
 
-        val mediaItem = buildMediaItem(ch)
-
         val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
-            .setBufferDurationsMs(800, 20000, 400, 800)
+            .setBufferDurationsMs(
+                /* minBufferMs = */ 20000,
+                /* maxBufferMs = */ 60000,
+                /* bufferForPlaybackMs = */ 1000,
+                /* bufferForPlaybackAfterRebufferMs = */ 2000
+            )
+            .setBackBuffer(15000, /* retainBackBufferFromKeyframe = */ true)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
         val trackSelector = DefaultTrackSelector(this).apply {
             setParameters(
                 buildUponParameters()
+                    .setAllowVideoNonSeamlessAdaptiveness(true)
+                    .setAllowVideoMixedMimeTypeAdaptiveness(true)
+                    .setAllowAudioMixedMimeTypeAdaptiveness(true)
                     .setMaxVideoSize(3840, 2160)
                     .setExceedVideoConstraintsIfNecessary(true)
                     .setExceedRendererCapabilitiesIfNecessary(true)
@@ -578,22 +616,18 @@ class PlayerActivity : AppCompatActivity() {
         }
 
         val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(this)
-            .setMediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunneling ->
-                val nonSecureDecoders = androidx.media3.exoplayer.mediacodec.MediaCodecSelector.DEFAULT.getDecoderInfos(mimeType, false, requiresTunneling)
-                if (nonSecureDecoders.isNotEmpty()) nonSecureDecoders else androidx.media3.exoplayer.mediacodec.MediaCodecSelector.DEFAULT.getDecoderInfos(mimeType, requiresSecureDecoder, requiresTunneling)
-            }
+            .setEnableDecoderFallback(true)
+            .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+            .forceEnableMediaCodecAsynchronousQueueing()
 
         exoPlayer = ExoPlayer.Builder(this, renderersFactory)
+            .setBandwidthMeter(bandwidthMeter)
             .setLoadControl(loadControl)
             .setTrackSelector(trackSelector)
             .setMediaSourceFactory(mediaSourceFactory)
             .build()
             .apply {
                 playerView.player = this
-                setMediaItem(mediaItem)
-                prepare()
-                playWhenReady = true
-
                 addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         when (playbackState) {
@@ -654,6 +688,8 @@ class PlayerActivity : AppCompatActivity() {
                     }
                 })
             }
+
+        playChannel(ch)
     }
 
     override fun onStart() {
